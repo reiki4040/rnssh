@@ -1,0 +1,8 @@
+gom 'github.com/dotcloud/docker/pkg/mflag', :commit => '6fcc9141d71796822ac87e2c54d253c7abd27726'
+gom 'github.com/goamz/goamz/aws', :commit => 'a1da1b724496ac803aabd4898e15e74535d68ee0'
+gom 'github.com/goamz/goamz/ec2', :commit => 'a1da1b724496ac803aabd4898e15e74535d68ee0'
+gom 'github.com/mattn/go-runewidth', :commit => 'e924e6534529fd53643e9791bd0490eca65e902b'
+gom 'github.com/nsf/termbox-go', :commit => 'bb19a81afd4bc2729799d1fedb19f7bd7ee284cf'
+gom 'github.com/peco/peco/keyseq', :commit => '4952013023ae1d92c10d826e6970c5a68959678d'
+gom 'github.com/reiki4040/peco', :commit => '979679baa9f128d2a6785b4db0ddbbe0d4d55c84'
+gom 'github.com/reiki4040/rnssh/internal/ec2'
