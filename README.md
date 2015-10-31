@@ -2,6 +2,7 @@ rnssh
 ====
 
 easy ssh to ec2 instance.
+now MacOS only.
 
 ## How to install and settings
 
