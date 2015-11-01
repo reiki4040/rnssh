@@ -1,6 +1,12 @@
 rnssh
 ====
 
+[![GitHub release](http://img.shields.io/github/release/reiki4040/rnssh.svg?style=flat-square)][release]
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)][license]
+
+[release]: https://github.com/reiki4040/rnssh/releases
+[license]: https://github.com/reiki4040/rnssh/blob/master/LICENSE
+
 easy ssh to ec2 instance.
 now MacOS only.
 
