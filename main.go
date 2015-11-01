@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	flag "github.com/dotcloud/docker/pkg/mflag"
-	"github.com/goamz/goamz/ec2"
 
 	"github.com/reiki4040/peco"
 	myec2 "github.com/reiki4040/rnssh/internal/ec2"
@@ -162,13 +162,13 @@ func main() {
 		}
 	}
 
-	region, err := myec2.GetRegion(regionName)
-	if err != nil {
-		fmt.Printf("failed region: %s\n", err.Error())
+	region := myec2.GetRegion(regionName)
+	if region == "" {
+		fmt.Println("region is empty. please specify by region option (-r) or AWS_REGION envirnment variable.")
 		os.Exit(1)
 	}
 
-	err = myec2.CreateRnzooDir()
+	err := myec2.CreateRnzooDir()
 	if err != nil {
 		fmt.Printf("can not create rnzoo dir: %s\n", err.Error())
 		os.Exit(1)
@@ -232,8 +232,12 @@ func getSshUserAndHostname(sshTarget string) (string, string, error) {
 	return "", sshTarget, nil
 }
 
-func chooseEC2Instance(instances []ec2.Instance, defaultQuery string) (*ChoosableEC2, error) {
+func chooseEC2Instance(instances []*ec2.Instance, defaultQuery string) (*ChoosableEC2, error) {
 	choices := convertChoosableList(instances)
+	if len(choices) == 0 {
+		err := fmt.Errorf("there is no running instance.")
+		return nil, err
+	}
 	pecoOpt := &peco.PecoOptions{
 		OptPrompt: "which do you choose the instance? >",
 		OptQuery:  defaultQuery,
@@ -258,32 +262,53 @@ func chooseEC2Instance(instances []ec2.Instance, defaultQuery string) (*Choosabl
 	return targetHost, nil
 }
 
-func convertChoosableList(instances []ec2.Instance) []peco.Choosable {
+func convertChoosableList(instances []*ec2.Instance) []peco.Choosable {
 	choices := make([]peco.Choosable, 0, len(instances))
 	for _, i := range instances {
-		choices = append(choices, convertChoosable(i))
+		c := convertChoosable(i)
+		if c != nil {
+			choices = append(choices, c)
+		}
 	}
 
 	return choices
 }
 
-func convertChoosable(i ec2.Instance) *ChoosableEC2 {
+func convertChoosable(i *ec2.Instance) *ChoosableEC2 {
+	if i.State.Name != nil {
+		s := i.State.Name
+		if *s != "running" {
+			return nil
+		}
+	} else {
+		return nil
+	}
+
 	var nameTag string
 	for _, tag := range i.Tags {
-		if tag.Key == "Name" {
-			nameTag = tag.Value
+		if convertNilString(tag.Key) == "Name" {
+			nameTag = convertNilString(tag.Value)
 			break
 		}
 	}
 
+	ins := *i
 	ec2host := &ChoosableEC2{
-		InstanceId:       i.InstanceId,
+		InstanceId:       convertNilString(ins.InstanceId),
 		Name:             nameTag,
-		IPAddress:        i.IPAddress,
-		PrivateIPAddress: i.PrivateIPAddress,
+		IPAddress:        convertNilString(ins.PublicIpAddress),
+		PrivateIPAddress: convertNilString(ins.PrivateIpAddress),
 	}
 
 	return ec2host
+}
+
+func convertNilString(s *string) string {
+	if s == nil {
+		return ""
+	} else {
+		return *s
+	}
 }
 
 type ChoosableEC2 struct {

@@ -3,13 +3,13 @@ package ec2
 import (
 	"bufio"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/ec2"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 const (
@@ -25,9 +25,9 @@ func GetRnzooDir() string {
 	return rnzooDir
 }
 
-func GetEc2listCachePath(region *aws.Region) string {
+func GetEc2listCachePath(region string) string {
 	rnzooDir := GetRnzooDir()
-	return rnzooDir + string(os.PathSeparator) + RNZOO_EC2_LIST_CACHE_PREFIX + region.Name
+	return rnzooDir + string(os.PathSeparator) + RNZOO_EC2_LIST_CACHE_PREFIX + region
 }
 
 func CreateRnzooDir() error {
@@ -46,29 +46,20 @@ func CreateRnzooDir() error {
 }
 
 // get Region from string region name.
-func GetRegion(regionName string) (*aws.Region, error) {
+func GetRegion(regionName string) string {
 	if regionName == "" {
 		regionName = os.Getenv(ENV_AWS_REGION)
 	}
 
-	region, ok := aws.Regions[strings.ToLower(regionName)]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("unknown region name: %s", regionName))
-	}
-
-	return &region, nil
+	return strings.ToLower(regionName)
 }
-func GetEC2Array(reload bool, region *aws.Region) ([]ec2.Instance, error) {
+
+func GetEC2Array(reload bool, region string) ([]*ec2.Instance, error) {
 	//func ec2list(reload bool, region *aws.Region) {
-	var instances []ec2.Instance
+	var instances []*ec2.Instance
 	cachePath := GetEc2listCachePath(region)
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) || reload {
-		auth, err := aws.EnvAuth()
-		if err != nil {
-			awsErr := fmt.Errorf("failed auth: %s", err.Error())
-			return nil, awsErr
-		}
-		instances, err = GetInstances(auth, region)
+		instances, err = GetInstances(region)
 		if err != nil {
 			awsErr := fmt.Errorf("failed get instance: %s", err.Error())
 			return nil, awsErr
@@ -92,10 +83,10 @@ func GetEC2Array(reload bool, region *aws.Region) ([]ec2.Instance, error) {
 }
 
 type Instances struct {
-	Instances []ec2.Instance `xml:"Instance"`
+	Instances []*ec2.Instance `xml:"Instance"`
 }
 
-func StoreCache(instances []ec2.Instance, cachePath string) error {
+func StoreCache(instances []*ec2.Instance, cachePath string) error {
 	cacheFile, err := os.Create(cachePath)
 	if err != nil {
 		return err
@@ -113,7 +104,7 @@ func StoreCache(instances []ec2.Instance, cachePath string) error {
 	return nil
 }
 
-func LoadCache(cachePath string) ([]ec2.Instance, error) {
+func LoadCache(cachePath string) ([]*ec2.Instance, error) {
 	cacheFile, err := os.Open(cachePath)
 	if err != nil {
 		return nil, err
@@ -131,19 +122,19 @@ func LoadCache(cachePath string) ([]ec2.Instance, error) {
 	return instances.Instances, nil
 }
 
-func GetInstances(auth aws.Auth, region *aws.Region) ([]ec2.Instance, error) {
-	ec2conn := ec2.New(auth, *region)
+func GetInstances(region string) ([]*ec2.Instance, error) {
+	cli := ec2.New(session.New(), &aws.Config{Region: aws.String(region)})
 
-	resp, err := ec2conn.DescribeInstances(nil, nil)
+	resp, err := cli.DescribeInstances(nil)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(resp.Reservations) == 0 {
-		return []ec2.Instance{}, nil
+		return []*ec2.Instance{}, nil
 	}
 
-	instances := make([]ec2.Instance, 0)
+	instances := make([]*ec2.Instance, 0)
 	for _, r := range resp.Reservations {
 		for _, i := range r.Instances {
 			instances = append(instances, i)
