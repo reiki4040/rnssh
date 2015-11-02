@@ -7,11 +7,11 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
 	flag "github.com/dotcloud/docker/pkg/mflag"
 
 	"github.com/reiki4040/peco"
 	myec2 "github.com/reiki4040/rnssh/internal/ec2"
+	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
 const (
@@ -84,10 +84,6 @@ Caution
 `
 
 	ENV_RNSSH_HOST_TYPE = "RNSSH_HOST_TYPE"
-
-	HOST_TYPE_PUBLIC_IP  = "public"
-	HOST_TYPE_PRIVATE_IP = "private"
-	HOST_TYPE_NAME_TAG   = "name"
 )
 
 var (
@@ -179,20 +175,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := myec2.CreateRnzooDir()
+	err := rnssh.CreateRnsshDir()
 	if err != nil {
 		fmt.Printf("can not create rnzoo dir: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	instances, err := myec2.GetEC2Array(force_reload, region)
-	if err != nil {
-		fmt.Printf("failed ec2 list: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	if len(instances) == 0 {
-		fmt.Printf("there is no instance. not running\n", region)
 		os.Exit(1)
 	}
 
@@ -203,19 +188,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	sshTargetType := getSshTargetType(optPublicIP, optPrivateIP, optNameTag)
+
+	handler := myec2.DefaultEC2Handler()
+	choosableList, err := handler.LoadTargetHost(sshTargetType, region, force_reload)
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	if len(choosableList) == 0 {
+		fmt.Printf("there is no instance. not running %s\n", region)
+		os.Exit(1)
+	}
+
 	// show ec2 instances and choose intactive
-	targetHost, err := chooseEC2Instance(instances, hostname)
+	targetHost, err := chooseTargetHost(choosableList, hostname)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
 	}
 
-	sshHost, err := getSshHost(optPublicIP, optPrivateIP, optNameTag, targetHost)
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		os.Exit(1)
-	}
-
+	sshHost := targetHost.GetSshTarget()
 	sshArgs := genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost)
 
 	if showCommand {
@@ -243,29 +237,35 @@ func getSshUserAndHostname(sshTarget string) (string, string, error) {
 	return "", sshTarget, nil
 }
 
-func chooseEC2Instance(instances []*ec2.Instance, defaultQuery string) (*ChoosableEC2, error) {
-	choices := convertChoosableList(instances)
+func chooseTargetHost(choices []rnssh.Choosable, defaultQuery string) (rnssh.Choosable, error) {
+
 	if len(choices) == 0 {
 		err := fmt.Errorf("there is no running instance.")
 		return nil, err
 	}
+
+	pecoChoices := make([]peco.Choosable, 0, len(choices))
+	for _, c := range choices {
+		pecoChoices = append(pecoChoices, c)
+	}
+
 	pecoOpt := &peco.PecoOptions{
 		OptPrompt: "which do you choose the instance? >",
 		OptQuery:  defaultQuery,
 	}
 
-	result, err := peco.PecolibWithOptions(choices, pecoOpt)
+	result, err := peco.PecolibWithOptions(pecoChoices, pecoOpt)
 	if err != nil || len(result) == 0 {
 		err := fmt.Errorf("no select target.")
 		return nil, err
 	}
 
-	var targetHost *ChoosableEC2
+	var targetHost rnssh.Choosable
 	for _, r := range result {
-		if ec2host, ok := r.(*ChoosableEC2); ok {
+		if ec2host, ok := r.(rnssh.Choosable); ok {
 			targetHost = ec2host
 		} else {
-			err := fmt.Errorf("this is bug. type is not ChoosableEC2: %v", r)
+			err := fmt.Errorf("this is bug. type is not Choosable: %v", r)
 			return nil, err
 		}
 	}
@@ -273,104 +273,29 @@ func chooseEC2Instance(instances []*ec2.Instance, defaultQuery string) (*Choosab
 	return targetHost, nil
 }
 
-func convertChoosableList(instances []*ec2.Instance) []peco.Choosable {
-	choices := make([]peco.Choosable, 0, len(instances))
-	for _, i := range instances {
-		c := convertChoosable(i)
-		if c != nil {
-			choices = append(choices, c)
-		}
-	}
+func getSshTargetType(publicIP, privateIP, nameTag bool) string {
 
-	return choices
-}
-
-func convertChoosable(i *ec2.Instance) *ChoosableEC2 {
-	if i.State.Name != nil {
-		s := i.State.Name
-		if *s != "running" {
-			return nil
-		}
-	} else {
-		return nil
-	}
-
-	var nameTag string
-	for _, tag := range i.Tags {
-		if convertNilString(tag.Key) == "Name" {
-			nameTag = convertNilString(tag.Value)
-			break
-		}
-	}
-
-	ins := *i
-	ec2host := &ChoosableEC2{
-		InstanceId:       convertNilString(ins.InstanceId),
-		Name:             nameTag,
-		IPAddress:        convertNilString(ins.PublicIpAddress),
-		PrivateIPAddress: convertNilString(ins.PrivateIpAddress),
-	}
-
-	return ec2host
-}
-
-func convertNilString(s *string) string {
-	if s == nil {
-		return ""
-	} else {
-		return *s
-	}
-}
-
-type ChoosableEC2 struct {
-	InstanceId       string
-	Name             string
-	IPAddress        string
-	PrivateIPAddress string
-}
-
-func (e *ChoosableEC2) Choice() string {
-	ipAddr := e.IPAddress
-	if ipAddr == "" {
-		ipAddr = "NO PUBLIC IP"
-	}
-
-	return fmt.Sprintf("%s\t[%s]\t[%s]\t[%s]", e.InstanceId, e.Name, ipAddr, e.PrivateIPAddress)
-}
-
-func getSshHost(publicIP, privateIP, nameTag bool, targetHost *ChoosableEC2) (string, error) {
-
-	sshHost := ""
-	// default host type.
 	hostType := os.Getenv(ENV_RNSSH_HOST_TYPE)
+
+	// default host type.
+	if hostType == "" {
+		hostType = myec2.HOST_TYPE_PUBLIC_IP
+	}
 
 	// overwrite by option
 	if publicIP {
-		hostType = HOST_TYPE_PUBLIC_IP
+		hostType = myec2.HOST_TYPE_PUBLIC_IP
 	}
 
 	if privateIP {
-		hostType = HOST_TYPE_PRIVATE_IP
+		hostType = myec2.HOST_TYPE_PRIVATE_IP
 	}
 
 	if nameTag {
-		hostType = HOST_TYPE_NAME_TAG
+		hostType = myec2.HOST_TYPE_NAME_TAG
 	}
 
-	switch hostType {
-	case "":
-		// default public ip
-		fallthrough
-	case HOST_TYPE_PUBLIC_IP:
-		return targetHost.IPAddress, nil
-	case HOST_TYPE_PRIVATE_IP:
-		return targetHost.PrivateIPAddress, nil
-	case HOST_TYPE_NAME_TAG:
-		return targetHost.Name, nil
-	default:
-		err := fmt.Errorf("unknown ssh type: %s\n", sshHost)
-		return "", err
-	}
+	return hostType
 }
 
 func genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost string) []string {
