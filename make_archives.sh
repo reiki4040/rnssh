@@ -1,5 +1,5 @@
 #!/bin/sh
-version=0.3.0
+version=0.3.1
 
 WORK_DIR="work"
 DEST_DIR="archives"
