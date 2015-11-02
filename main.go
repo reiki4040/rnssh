@@ -365,11 +365,11 @@ func getSshHost(publicIP, privateIP, nameTag bool, targetHost *ChoosableEC2) (st
 func genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost string) []string {
 	args := make([]string, 0)
 	if optSshUser != "" {
-		args = append(args, "-l "+optSshUser)
+		args = append(args, "-l"+optSshUser)
 	}
 
 	if optIdentityFile != "" {
-		args = append(args, "-i "+optIdentityFile)
+		args = append(args, "-i"+optIdentityFile)
 	}
 
 	if sshUser != "" {
