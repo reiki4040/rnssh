@@ -28,25 +28,45 @@ download rnssh binary file and set PATH
 
 ## Settings
 
-- set AWS ENV variables
+- set AWS credentials
+- set AWS default region
 - ssh config (Optional but recommended)
 
-### set AWS variables (.bashrc, .bash_profile etc...)
+### set AWS credentials
 
-    export AWS_ACCESS_KEY_ID=
-    export AWS_SECRET_ACCESS_KEY=
+* credential file (`~/.aws/credentials`)
 
-    # option: specify default region
-    export AWS_REGION=
+```
+[default]
+aws_access_key_id=your_key_id
+aws_secret_access_key=your_secret
+```
 
+* Environment variable (`~/.bashrc`, `~/.bash_profile`, etc...)
+
+```
+export AWS_ACCESS_KEY_ID=
+export AWS_SECRET_ACCESS_KEY=
+```
+
+### set AWS default region
+
+* Environment variable (`~/.bashrc`, `~/.bash_profile`, etc...)
+
+```
+# option: specify default region
+export AWS_REGION=ap-northeast-1
+```
 
 ### ssh config
 
 `vi ~/.ssh/config`
 
-    Host X.X.X.X
-      User your_user
-      IdentityFile you_key_file
+```
+Host X.X.X.X
+  User your_user
+  IdentityFile you_key_file
+```
 
 ***More useful If you added your ec2 instances to ssh config before using rnssh by yourself.***
 
@@ -54,19 +74,25 @@ download rnssh binary file and set PATH
 
 ### run command
 
-    rnssh -i identity_file user@host
+```
+rnssh -i identity_file user@host
+```
 
 you can run `rnssh` (without options `-l`,`-i`) if you added instances to ssh config.
 
 show ec2 instances list. you can filtering.
 
-    Select ssh instance. You can do filtering>
-    instance name1 X.X.X.X
-    instance name2 X.X.X.Y
+```
+Select ssh instance. You can do filtering>
+instance name1 X.X.X.X
+instance name2 X.X.X.Y
+```
 
 choose the instance, then start ssh to the instance.
 
-    instanse $
+```
+instanse $
+```
 
 ## More useful
 
@@ -82,21 +108,27 @@ without `-f`, rnssh does load from cache file. it is faster than connect to AWS(
 
 if you created ssh config (ex ~/.ssh/config), rnssh can works without `-l`, `-i` options.
 
-    Host <ec2_ipaddress>
-         User <ssh_user>
-         IdentityFile <to_identity_fie_path>
+```
+Host <ec2_ipaddress>
+     User <ssh_user>
+     IdentityFile <to_identity_fie_path>
+```
 
 ### filtering
 
 rnssh can filter instances with using arguments
 
-    rnssh web server
+```
+rnssh web server
+```
 
 already filtered and it is able to modify if you want.
 
-    QUERY>web server
-    web server1 X.X.X.X
-    web server2 Y.Y.Y.Y
+```
+QUERY>web server
+web server1 X.X.X.X
+web server2 Y.Y.Y.Y
+```
 
 ### change default ssh host type with `RNSSH_HOST_TYPE`
 
@@ -113,8 +145,6 @@ and you can use `-P` `-p` `-n`, when you want to use other ssh host type tempora
 
 ## TODO
 
-- Migrate to aws-go-sdk
-- homebrew
 - Test code
 
 ## Copyright and LICENSE
