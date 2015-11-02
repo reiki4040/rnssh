@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -156,6 +157,16 @@ func main() {
 	}
 
 	if optIdentityFile != "" {
+		// replace ~ -> home dir
+		if i := strings.Index(optIdentityFile, "~"); i == 0 {
+			user, err := user.Current()
+			if err != nil {
+				fmt.Printf("can not resolved home dir: %s\n", err.Error())
+				os.Exit(1)
+			}
+			optIdentityFile = user.HomeDir + "/" + optIdentityFile[1:]
+		}
+
 		if _, err := os.Stat(optIdentityFile); os.IsNotExist(err) {
 			fmt.Printf("Identity file not exists: %s\n", optIdentityFile)
 			os.Exit(1)
@@ -365,11 +376,11 @@ func getSshHost(publicIP, privateIP, nameTag bool, targetHost *ChoosableEC2) (st
 func genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost string) []string {
 	args := make([]string, 0)
 	if optSshUser != "" {
-		args = append(args, "-l "+optSshUser)
+		args = append(args, "-l"+optSshUser)
 	}
 
 	if optIdentityFile != "" {
-		args = append(args, "-i "+optIdentityFile)
+		args = append(args, "-i"+optIdentityFile)
 	}
 
 	if sshUser != "" {
