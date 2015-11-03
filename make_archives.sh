@@ -39,7 +39,7 @@ do
     cd $current/$WORK_DIR
     zip -r "$rnssh_prefix".zip "./$rnssh_prefix"
     mv "$rnssh_prefix".zip $current/$DEST_DIR/
-    sha1sum "$current/$DEST_DIR/$rnssh_prefix.zip"
+    shasum -a 256 "$current/$DEST_DIR/$rnssh_prefix.zip"
     echo "finished $os/$arch build and create archive file."
     echo ""
   done
