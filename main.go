@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 
 	flag "github.com/dotcloud/docker/pkg/mflag"
@@ -105,6 +106,7 @@ var (
 
 	optSshUser      string
 	optIdentityFile string
+	optPort         int
 )
 
 func init() {
@@ -120,6 +122,7 @@ func init() {
 	flag.StringVar(&regionName, []string{"r", "-region"}, "", "specify region")
 	flag.StringVar(&optSshUser, []string{"l", "-user"}, "", "specify ssh user")
 	flag.StringVar(&optIdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
+	flag.IntVar(&optPort, []string{"-port"}, 0, "specify ssh port")
 
 	flag.Parse()
 }
@@ -210,7 +213,7 @@ func main() {
 	}
 
 	sshHost := targetHost.GetSshTarget()
-	sshArgs := genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost)
+	sshArgs := genSshArgs(optSshUser, optIdentityFile, optPort, sshUser, sshHost)
 
 	if showCommand {
 		fmt.Printf("%s %s\n", "ssh", strings.Join(sshArgs, " "))
@@ -298,7 +301,7 @@ func getSshTargetType(publicIP, privateIP, nameTag bool) string {
 	return hostType
 }
 
-func genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost string) []string {
+func genSshArgs(optSshUser, optIdentityFile string, optPort int, sshUser, sshHost string) []string {
 	args := make([]string, 0)
 	if optSshUser != "" {
 		args = append(args, "-l"+optSshUser)
@@ -306,6 +309,10 @@ func genSshArgs(optSshUser, optIdentityFile, sshUser, sshHost string) []string {
 
 	if optIdentityFile != "" {
 		args = append(args, "-i"+optIdentityFile)
+	}
+
+	if optPort > 0 {
+		args = append(args, "-p"+strconv.Itoa(optPort))
 	}
 
 	if sshUser != "" {
