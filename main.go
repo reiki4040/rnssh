@@ -20,10 +20,9 @@ const (
 
 usage:
 
-  rnssh [-f] [-p] [-l SSH_USER] [-s] query strings ...
+  rnssh [-f] [-p] [-s] [user@]query strings ...
   rnssh -h
   rnssh -v
-  rnssh -d
 
 options:
   -f: reload ec2 instances infomaion. connect to AWS.
