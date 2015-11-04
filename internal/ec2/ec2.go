@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -58,6 +59,20 @@ func (e *ChoosableEC2) GetSshTarget() string {
 	}
 }
 
+type ChoosableEC2s []*ChoosableEC2
+
+func (e ChoosableEC2s) Len() int {
+	return len(e)
+}
+
+func (e ChoosableEC2s) Swap(i, j int) {
+	e[i], e[j] = e[j], e[i]
+}
+
+func (e ChoosableEC2s) Less(i, j int) bool {
+	return e[i].Name < e[j].Name
+}
+
 // get Region from string region name.
 func GetRegion(regionName string) string {
 	if regionName == "" {
@@ -81,13 +96,13 @@ type EC2Handler struct {
 	CacheDirPath string
 }
 
-func (r *EC2Handler) GetEc2listCachePath(region string) string {
+func (r *EC2Handler) GetchoosableEC2ListCachePath(region string) string {
 	return r.CacheDirPath + string(os.PathSeparator) + RNSSH_EC2_LIST_CACHE_PREFIX + region + ".json"
 }
 
 func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]rnssh.Choosable, error) {
 	var instances []*ec2.Instance
-	cachePath := r.GetEc2listCachePath(region)
+	cachePath := r.GetchoosableEC2ListCachePath(region)
 
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) || reload {
 		var err error
@@ -190,18 +205,25 @@ func GetInstances(region string) ([]*ec2.Instance, error) {
 }
 
 func ConvertChoosableList(instances []*ec2.Instance, targetType string) []rnssh.Choosable {
-	choices := make([]rnssh.Choosable, 0, len(instances))
+	choosableEC2List := make([]*ChoosableEC2, 0, len(instances))
 	for _, i := range instances {
-		c := convertChoosable(i, targetType)
-		if c != nil {
-			choices = append(choices, c)
+		e := convertChoosable(i, targetType)
+		if e != nil {
+			choosableEC2List = append(choosableEC2List, e)
 		}
+	}
+
+	sort.Sort(ChoosableEC2s(choosableEC2List))
+
+	choices := make([]rnssh.Choosable, 0, len(choosableEC2List))
+	for _, c := range choosableEC2List {
+		choices = append(choices, c)
 	}
 
 	return choices
 }
 
-func convertChoosable(i *ec2.Instance, targetType string) rnssh.Choosable {
+func convertChoosable(i *ec2.Instance, targetType string) *ChoosableEC2 {
 	if i.State.Name != nil {
 		s := i.State.Name
 		if *s != "running" {
