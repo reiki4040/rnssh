@@ -12,29 +12,26 @@ now MacOS only.
 
 ## How to install and settings
 
+- homebrew (recommend)
 - download binary
-- homebrew (beta)
+
+### homebrew (recommend)
+
+```
+brew tap reiki4040/rnssh
+brew install rnssh
+```
+
+if you want updgrade when updated rnssh, below commnads.
+
+```
+brew update
+brew upgrade rnssh
+```
 
 ### download archive and set PATH
 
 download rnssh binary file and set PATH
-
-### homebrew (beta)
-
-```
-brew tap reiki4040/rnssh
-brew install rnssh
-```
-
-easy but not support upgrade yet. investgating...
-if you want updgrade, below commnads.
-
-```
-brew uninstall rnssh
-brew untap reiki4040/rnssh
-brew tap reiki4040/rnssh
-brew install rnssh
-```
 
 ## Settings
 
