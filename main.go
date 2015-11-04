@@ -57,6 +57,8 @@ options for ssh:
   -l: ssh user.
   -i: identity file path.
   --port: ssh port.
+  --strict-host-key-checking-no: suppress host key checking.
+                                 using 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 
 options for help:
   -h: show this usage.
@@ -105,9 +107,10 @@ var (
 
 	showCommand bool
 
-	optSshUser      string
-	optIdentityFile string
-	optPort         int
+	optSshUser                 string
+	optIdentityFile            string
+	optPort                    int
+	optStrictHostKeyCheckingNo bool
 )
 
 func init() {
@@ -124,6 +127,7 @@ func init() {
 	flag.StringVar(&optSshUser, []string{"l", "-user"}, "", "specify ssh user")
 	flag.StringVar(&optIdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
 	flag.IntVar(&optPort, []string{"-port"}, 0, "specify ssh port")
+	flag.BoolVar(&optStrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, false, "suppress host key checking. => 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'")
 
 	flag.Parse()
 }
@@ -214,7 +218,7 @@ func main() {
 	}
 
 	sshHost := targetHost.GetSshTarget()
-	sshArgs := genSshArgs(optSshUser, optIdentityFile, optPort, sshUser, sshHost)
+	sshArgs := genSshArgs(optSshUser, optIdentityFile, optPort, optStrictHostKeyCheckingNo, sshUser, sshHost)
 
 	if showCommand {
 		fmt.Printf("%s %s\n", "ssh", strings.Join(sshArgs, " "))
@@ -302,7 +306,7 @@ func getSshTargetType(publicIP, privateIP, nameTag bool) string {
 	return hostType
 }
 
-func genSshArgs(optSshUser, optIdentityFile string, optPort int, sshUser, sshHost string) []string {
+func genSshArgs(optSshUser, optIdentityFile string, optPort int, optStrictHostKeyCheckingNo bool, sshUser, sshHost string) []string {
 	args := make([]string, 0)
 	if optSshUser != "" {
 		args = append(args, "-l"+optSshUser)
@@ -314,6 +318,11 @@ func genSshArgs(optSshUser, optIdentityFile string, optPort int, sshUser, sshHos
 
 	if optPort > 0 {
 		args = append(args, "-p"+strconv.Itoa(optPort))
+	}
+
+	if optStrictHostKeyCheckingNo {
+		args = append(args, "-oStrictHostKeyChecking=no")
+		args = append(args, "-oUserKnownHostsFile=/dev/null")
 	}
 
 	if sshUser != "" {
