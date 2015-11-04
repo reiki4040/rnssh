@@ -56,6 +56,7 @@ options:
 options for ssh:
   -l: ssh user.
   -i: identity file path.
+  --port: ssh port.
 
 options for help:
   -h: show this usage.
