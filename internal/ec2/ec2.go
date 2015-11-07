@@ -2,11 +2,13 @@ package ec2
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -39,10 +41,17 @@ func (e *ChoosableEC2) Choice() string {
 		publicIP = "NO_PUBLIC_IP"
 	}
 
+	w := new(tabwriter.Writer)
+	var b bytes.Buffer
+	w.Init(&b, 14, 0, 4, ' ', 0)
 	if e.TargetType == HOST_TYPE_NAME_TAG {
-		return fmt.Sprintf("%s\t%s\t%s\t%s", e.InstanceId, e.Name, publicIP, e.PrivateIP)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s", e.InstanceId, e.Name, publicIP, e.PrivateIP)
+		w.Flush()
+		return string(b.Bytes())
 	} else {
-		return fmt.Sprintf("%s\t%s\t%s", e.InstanceId, e.Name, e.GetSshTarget())
+		fmt.Fprintf(w, "%s\t%s\t%s", e.InstanceId, e.Name, e.GetSshTarget())
+		w.Flush()
+		return string(b.Bytes())
 	}
 }
 
