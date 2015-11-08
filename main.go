@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strconv"
 	"strings"
 
@@ -23,6 +22,7 @@ usage:
   rnssh [-f] [-p] [-s] [user@]query strings ...
   rnssh -h
   rnssh -v
+  rnssh --init
 
 options:
   -f: reload ec2 instances infomaion. connect to AWS.
@@ -52,12 +52,17 @@ options:
 
   -s: show ssh command string that would be run. (debug)
 
+  --init: start wizard for default setting AWS region and HostType
+          and save to config file (~/.rnssh/config)
+
 options for ssh:
   -l: ssh user.
   -i: identity file path.
   --port: ssh port.
   --strict-host-key-checking-no: suppress host key checking.
-                                 using 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+                                 1: using 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+                                 0: OFF
+                                -1: Default(OFF)
 
 options for help:
   -h: show this usage.
@@ -86,8 +91,55 @@ Caution
   rnssh query string -s
 `
 
+	ENV_AWS_REGION      = "AWS_REGION"
 	ENV_RNSSH_HOST_TYPE = "RNSSH_HOST_TYPE"
 )
+
+type CommandOption struct {
+	Reload                  bool
+	Region                  string
+	PrivateIP               bool
+	PublicIP                bool
+	NameTag                 bool
+	SshUser                 string
+	IdentityFile            string
+	Port                    int
+	StrictHostKeyCheckingNo int
+}
+
+func (o *CommandOption) Validate() error {
+	if err := duplicateHostTypeOption(o.PublicIP, o.PrivateIP, o.NameTag); err != nil {
+		return err
+	}
+
+	if err := rnssh.IdentityFileCheck(o.IdentityFile); err != nil {
+		return err
+	}
+
+	if err := rnssh.StrictHostKeyCheckingNoCheck(o.StrictHostKeyCheckingNo); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func duplicateHostTypeOption(public, private, name bool) error {
+	if public && private || private && name || public && name {
+		return fmt.Errorf("duplicate specify option -P/-p/-n. please spcify only one.")
+	}
+
+	return nil
+}
+
+type RnsshOption struct {
+	Reload                  bool
+	Region                  string
+	HostType                string
+	SshUser                 string
+	IdentityFile            string
+	Port                    int
+	StrictHostKeyCheckingNo int
+}
 
 var (
 	version   string
@@ -96,37 +148,29 @@ var (
 
 	show_version bool
 	show_usage   bool
+	initWizard   bool
+	showCommand  bool
 
-	force_reload bool
-	regionName   string
-
-	optPrivateIP bool
-	optPublicIP  bool
-	optNameTag   bool
-
-	showCommand bool
-
-	optSshUser                 string
-	optIdentityFile            string
-	optPort                    int
-	optStrictHostKeyCheckingNo bool
+	// command option
+	opt = &CommandOption{}
 )
 
 func init() {
 	flag.BoolVar(&show_version, []string{"v", "-version"}, false, "show version.")
 	flag.BoolVar(&show_usage, []string{"h", "-help"}, false, "show this usage.")
+	flag.BoolVar(&initWizard, []string{"-init"}, false, "run initial configuration wizard.")
 
-	flag.BoolVar(&force_reload, []string{"f", "-force"}, false, "reload ec2 (force connect to AWS)")
-	flag.BoolVar(&optPublicIP, []string{"P", "-public-ip"}, false, "ssh with EC2 Public IP")
-	flag.BoolVar(&optPrivateIP, []string{"p", "-private-ip"}, false, "ssh with EC2 Private IP")
-	flag.BoolVar(&optNameTag, []string{"n", "-name-tag"}, false, "ssh with EC2 Name tag")
+	flag.BoolVar(&opt.Reload, []string{"f", "-force"}, false, "reload ec2 (force connect to AWS)")
+	flag.BoolVar(&opt.PublicIP, []string{"P", "-public-ip"}, false, "ssh with EC2 Public IP")
+	flag.BoolVar(&opt.PrivateIP, []string{"p", "-private-ip"}, false, "ssh with EC2 Private IP")
+	flag.BoolVar(&opt.NameTag, []string{"n", "-name-tag"}, false, "ssh with EC2 Name tag")
 	flag.BoolVar(&showCommand, []string{"s", "-show-command"}, false, "show ssh command that will do (debug)")
 
-	flag.StringVar(&regionName, []string{"r", "-region"}, "", "specify region")
-	flag.StringVar(&optSshUser, []string{"l", "-user"}, "", "specify ssh user")
-	flag.StringVar(&optIdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
-	flag.IntVar(&optPort, []string{"-port"}, 0, "specify ssh port")
-	flag.BoolVar(&optStrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, false, "suppress host key checking. => 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'")
+	flag.StringVar(&opt.Region, []string{"r", "-region"}, "", "specify region")
+	flag.StringVar(&opt.SshUser, []string{"l", "-user"}, "", "specify ssh user")
+	flag.StringVar(&opt.IdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
+	flag.IntVar(&opt.Port, []string{"-port"}, 0, "specify ssh port")
+	flag.IntVar(&opt.StrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, -1, "suppress host key checking. 1: ON, 0: OFF, -1: default(OFF)")
 
 	flag.Parse()
 }
@@ -137,10 +181,6 @@ func showVersion() {
 
 func usage() {
 	fmt.Printf("%s\n", Usage)
-}
-
-func duplicateHostTypeOption(public, private, name bool) bool {
-	return public && private || private && name || public && name
 }
 
 func main() {
@@ -154,70 +194,45 @@ func main() {
 		os.Exit(0)
 	}
 
-	if duplicateHostTypeOption(optPublicIP, optPrivateIP, optNameTag) {
-		fmt.Printf("duplicate specify option -P/-p/-n. please spcify only one.\n")
+	if initWizard {
+		if err := rnssh.DoConfigWizard(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		} else {
+			fmt.Println("saved rnssh config.")
+			os.Exit(0)
+		}
+	}
+
+	err := opt.Validate()
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
 	}
 
-	if optIdentityFile != "" {
-		// replace ~ -> home dir
-		if i := strings.Index(optIdentityFile, "~"); i == 0 {
-			user, err := user.Current()
-			if err != nil {
-				fmt.Printf("can not resolved home dir: %s\n", err.Error())
-				os.Exit(1)
-			}
-			optIdentityFile = user.HomeDir + "/" + optIdentityFile[1:]
-		}
-
-		if _, err := os.Stat(optIdentityFile); os.IsNotExist(err) {
-			fmt.Printf("Identity file not exists: %s\n", optIdentityFile)
-			os.Exit(1)
-		}
+	err = rnssh.CreateRnsshDir()
+	if err != nil {
+		fmt.Printf("can not create rnssh dir: %s\n", err.Error())
+		os.Exit(1)
 	}
 
-	region := myec2.GetRegion(regionName)
-	if region == "" {
+	conf, err := rnssh.GetConfig()
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	rOpt := mergeConfig(&conf.Default, *opt)
+	if rOpt.Region == "" {
 		fmt.Println("region is empty. please specify by region option (-r) or AWS_REGION envirnment variable.")
 		os.Exit(1)
 	}
 
-	err := rnssh.CreateRnsshDir()
-	if err != nil {
-		fmt.Printf("can not create rnzoo dir: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	// support user@host format
-	sshUser, hostname, err := getSshUserAndHostname(strings.Join(flag.Args(), " "))
+	sshArgs, err := chooseAndGenSshArgs(rOpt, flag.Args())
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
 	}
-
-	sshTargetType := getSshTargetType(optPublicIP, optPrivateIP, optNameTag)
-
-	handler := myec2.DefaultEC2Handler()
-	choosableList, err := handler.LoadTargetHost(sshTargetType, region, force_reload)
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		os.Exit(1)
-	}
-
-	if len(choosableList) == 0 {
-		fmt.Printf("there is no instance. not running %s\n", region)
-		os.Exit(1)
-	}
-
-	// show ec2 instances and choose intactive
-	targetHost, err := chooseTargetHost(choosableList, hostname)
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		os.Exit(1)
-	}
-
-	sshHost := targetHost.GetSshTarget()
-	sshArgs := genSshArgs(optSshUser, optIdentityFile, optPort, optStrictHostKeyCheckingNo, sshUser, sshHost)
 
 	if showCommand {
 		fmt.Printf("%s %s\n", "ssh", strings.Join(sshArgs, " "))
@@ -229,6 +244,97 @@ func main() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
+}
+
+// merge option, config, ENV
+// priority [high] option > config > ENV [low]
+func mergeConfig(conf *rnssh.RnsshConfig, opt CommandOption) *RnsshOption {
+
+	region := os.Getenv(ENV_AWS_REGION)
+	if opt.Region != "" {
+		region = opt.Region
+	} else {
+		if conf.AWSRegion != "" {
+			region = conf.AWSRegion
+		}
+	}
+
+	hostType := os.Getenv(ENV_RNSSH_HOST_TYPE)
+	optHostType := getSshTargetType(opt.PublicIP, opt.PrivateIP, opt.NameTag)
+	if optHostType != "" {
+		hostType = optHostType
+	} else {
+		if conf.HostType != "" {
+			hostType = conf.HostType
+		}
+	}
+
+	sshUser := conf.SshUser
+	if opt.SshUser != "" {
+		sshUser = opt.SshUser
+	}
+
+	identityFile := conf.SshIdentityFile
+	if opt.IdentityFile != "" {
+		identityFile = opt.IdentityFile
+	}
+
+	port := conf.SshPort
+	if opt.Port > 0 {
+		port = opt.Port
+	}
+
+	strictHostKeyCheckingNo := conf.SshStrictHostKeyCheckingNo
+	if opt.StrictHostKeyCheckingNo != -1 {
+		strictHostKeyCheckingNo = opt.StrictHostKeyCheckingNo
+	}
+
+	return &RnsshOption{
+		Region:       region,
+		HostType:     hostType,
+		SshUser:      sshUser,
+		IdentityFile: identityFile,
+		Port:         port,
+		StrictHostKeyCheckingNo: strictHostKeyCheckingNo,
+	}
+}
+
+func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string) ([]string, error) {
+
+	// support user@host format
+	sshUser, hostname, err := getSshUserAndHostname(strings.Join(cmdArgs, " "))
+	if err != nil {
+		return nil, fmt.Errorf("%s\n", err.Error())
+	}
+
+	hostType := rnssh.HOST_TYPE_PUBLIC_IP
+	if rOpt.HostType != "" {
+		hostType = rOpt.HostType
+	}
+
+	handler := myec2.DefaultEC2Handler()
+	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	if len(choosableList) == 0 {
+		fmt.Printf("there is no instance. not running %s\n", rOpt.Region)
+		os.Exit(1)
+	}
+
+	// show ec2 instances and choose intactive
+	targetHost, err := chooseTargetHost(choosableList, hostname)
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	sshHost := targetHost.Value()
+	sshArgs := genSshArgs(rOpt.SshUser, rOpt.IdentityFile, rOpt.Port, rOpt.StrictHostKeyCheckingNo, sshUser, sshHost)
+
+	return sshArgs, nil
 }
 
 func getSshUserAndHostname(sshTarget string) (string, string, error) {
@@ -282,30 +388,23 @@ func chooseTargetHost(choices []rnssh.Choosable, defaultQuery string) (rnssh.Cho
 
 func getSshTargetType(publicIP, privateIP, nameTag bool) string {
 
-	hostType := os.Getenv(ENV_RNSSH_HOST_TYPE)
-
-	// default host type.
-	if hostType == "" {
-		hostType = myec2.HOST_TYPE_PUBLIC_IP
-	}
-
 	// overwrite by option
 	if publicIP {
-		hostType = myec2.HOST_TYPE_PUBLIC_IP
+		return rnssh.HOST_TYPE_PUBLIC_IP
 	}
 
 	if privateIP {
-		hostType = myec2.HOST_TYPE_PRIVATE_IP
+		return rnssh.HOST_TYPE_PRIVATE_IP
 	}
 
 	if nameTag {
-		hostType = myec2.HOST_TYPE_NAME_TAG
+		return rnssh.HOST_TYPE_NAME_TAG
 	}
 
-	return hostType
+	return ""
 }
 
-func genSshArgs(optSshUser, optIdentityFile string, optPort int, optStrictHostKeyCheckingNo bool, sshUser, sshHost string) []string {
+func genSshArgs(optSshUser, optIdentityFile string, optPort, optStrictHostKeyCheckingNo int, sshUser, sshHost string) []string {
 	args := make([]string, 0)
 	if optSshUser != "" {
 		args = append(args, "-l"+optSshUser)
@@ -319,7 +418,7 @@ func genSshArgs(optSshUser, optIdentityFile string, optPort int, optStrictHostKe
 		args = append(args, "-p"+strconv.Itoa(optPort))
 	}
 
-	if optStrictHostKeyCheckingNo {
+	if optStrictHostKeyCheckingNo == 1 {
 		args = append(args, "-oStrictHostKeyChecking=no")
 		args = append(args, "-oUserKnownHostsFile=/dev/null")
 	}

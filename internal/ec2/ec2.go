@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -18,13 +17,7 @@ import (
 )
 
 const (
-	ENV_AWS_REGION = "AWS_REGION"
-
 	RNSSH_EC2_LIST_CACHE_PREFIX = "aws.instances.cache."
-
-	HOST_TYPE_PUBLIC_IP  = "public"
-	HOST_TYPE_PRIVATE_IP = "private"
-	HOST_TYPE_NAME_TAG   = "name"
 )
 
 type ChoosableEC2 struct {
@@ -44,24 +37,24 @@ func (e *ChoosableEC2) Choice() string {
 	w := new(tabwriter.Writer)
 	var b bytes.Buffer
 	w.Init(&b, 14, 0, 4, ' ', 0)
-	if e.TargetType == HOST_TYPE_NAME_TAG {
+	if e.TargetType == rnssh.HOST_TYPE_NAME_TAG {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s", e.InstanceId, e.Name, publicIP, e.PrivateIP)
 		w.Flush()
 		return string(b.Bytes())
 	} else {
-		fmt.Fprintf(w, "%s\t%s\t%s", e.InstanceId, e.Name, e.GetSshTarget())
+		fmt.Fprintf(w, "%s\t%s\t%s", e.InstanceId, e.Name, e.Value())
 		w.Flush()
 		return string(b.Bytes())
 	}
 }
 
-func (e *ChoosableEC2) GetSshTarget() string {
+func (e *ChoosableEC2) Value() string {
 	switch e.TargetType {
-	case HOST_TYPE_PUBLIC_IP:
+	case rnssh.HOST_TYPE_PUBLIC_IP:
 		return e.PublicIP
-	case HOST_TYPE_PRIVATE_IP:
+	case rnssh.HOST_TYPE_PRIVATE_IP:
 		return e.PrivateIP
-	case HOST_TYPE_NAME_TAG:
+	case rnssh.HOST_TYPE_NAME_TAG:
 		return e.Name
 	default:
 		return ""
@@ -82,15 +75,6 @@ func (e ChoosableEC2s) Less(i, j int) bool {
 	return e[i].Name < e[j].Name
 }
 
-// get Region from string region name.
-func GetRegion(regionName string) string {
-	if regionName == "" {
-		regionName = os.Getenv(ENV_AWS_REGION)
-	}
-
-	return strings.ToLower(regionName)
-}
-
 type Instances struct {
 	Instances []*ec2.Instance `json:"ec2_instances"`
 }
@@ -105,13 +89,13 @@ type EC2Handler struct {
 	CacheDirPath string
 }
 
-func (r *EC2Handler) GetchoosableEC2ListCachePath(region string) string {
+func (r *EC2Handler) GetChoosableEC2ListCachePath(region string) string {
 	return r.CacheDirPath + string(os.PathSeparator) + RNSSH_EC2_LIST_CACHE_PREFIX + region + ".json"
 }
 
 func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]rnssh.Choosable, error) {
 	var instances []*ec2.Instance
-	cachePath := r.GetchoosableEC2ListCachePath(region)
+	cachePath := r.GetChoosableEC2ListCachePath(region)
 
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) || reload {
 		var err error
@@ -260,7 +244,7 @@ func convertChoosable(i *ec2.Instance, targetType string) *ChoosableEC2 {
 		TargetType: targetType,
 	}
 
-	t := ec2host.GetSshTarget()
+	t := ec2host.Value()
 	if t == "" {
 		return nil
 	}
