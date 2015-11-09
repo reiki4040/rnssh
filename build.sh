@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=0.3.4
+VERSION=0.3.5
 HASH=$(git rev-parse --verify HEAD)
 BUILDDATE=$(date '+%Y/%m/%d %H:%M:%S %Z')
 
