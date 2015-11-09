@@ -12,21 +12,11 @@ now MacOS only.
 
 ## How to install and settings
 
-- homebrew (recommend)
-- download binary
-
 ### homebrew (recommend)
 
 ```
 brew tap reiki4040/rnssh
 brew install rnssh
-```
-
-if you want updgrade when updated rnssh, below commnads.
-
-```
-brew update
-brew upgrade rnssh
 ```
 
 ### download archive and set PATH
@@ -56,14 +46,9 @@ export AWS_ACCESS_KEY_ID=
 export AWS_SECRET_ACCESS_KEY=
 ```
 
-### set AWS default region
+### set default AWS region and host type
 
-* Environment variable (`~/.bashrc`, `~/.bash_profile`, etc...)
-
-```
-# option: specify default region
-export AWS_REGION=ap-northeast-1
-```
+run `rnssh --init` and save to rnssh config (~/.rnssh/config)
 
 ### ssh config
 
@@ -71,23 +56,28 @@ export AWS_REGION=ap-northeast-1
 
 ```
 Host X.X.X.X
+  HostName X.X.X.X
   User your_user
   IdentityFile you_key_file
 ```
 
-***More useful If you added your ec2 instances to ssh config before using rnssh by yourself.***
+[ec2ssh](https://github.com/mirakui/ec2ssh) helps your ssh configuration.
+it generate ssh config from EC2.
 
 ## How to use
 
 ### run command
 
 ```
-rnssh -i identity_file user@host
+# set ssh config
+rnssh
+
+# not set ssh config
+rnssh -i identity_file user@query_string
 ```
 
-you can run `rnssh` (without options `-l`,`-i`) if you added instances to ssh config.
-
-show ec2 instances list. you can filtering.
+you can run `rnssh` (without options `-i` and user@) if you added instances to ssh config.
+show ec2 instances list. you can filtering. if you specify query_string, already filtering instances.
 
 ```
 Select ssh instance. You can do filtering>
@@ -95,11 +85,7 @@ instance name1 X.X.X.X
 instance name2 X.X.X.Y
 ```
 
-choose the instance, then start ssh to the instance.
-
-```
-instanse $
-```
+choose the instance, then start ssh to the instance!
 
 ## More useful
 
@@ -110,16 +96,6 @@ if you update instances, you must be reload with `-f` option.
 (launch, start, stop etc...)
 
 without `-f`, rnssh does load from cache file. it is faster than connect to AWS(with `-f`).
-
-### ssh config
-
-if you created ssh config (ex ~/.ssh/config), rnssh can works without `-l`, `-i` options.
-
-```
-Host <ec2_ipaddress>
-     User <ssh_user>
-     IdentityFile <to_identity_fie_path>
-```
 
 ### filtering
 
@@ -137,18 +113,34 @@ web server1 X.X.X.X
 web server2 Y.Y.Y.Y
 ```
 
-### change default ssh host type with `RNSSH_HOST_TYPE`
+if you delete character, then show other name instances again.
 
-if you always rnssh with `-p`(Private IP) or `-n`(Name Tag), RNSSH_HOST_TYPE environment variable will be help.
-this variable can change default ssh host type.
+### change default ssh host type with `--init` or edit `~/.rnssh/config`
 
-valid values are below.
+if you always rnssh with `-p`(Private IP) or `-n`(Name Tag), you can edit default with `rnssh --init`
+
+host type's valid values are below.
 
 - `public` (default)
-- `private`
-- `name`
+- `private`(for VPN/Bastion)
+- `name`(need ssh config)
 
 and you can use `-P` `-p` `-n`, when you want to use other ssh host type temporarily.
+
+## Update version
+
+### homebrew
+
+update & upgrade
+
+```
+brew update
+brew upgrade rnssh
+```
+
+### binary
+
+please replace to new binary.
 
 ## TODO
 
