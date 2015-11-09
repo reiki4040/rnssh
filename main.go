@@ -15,13 +15,11 @@ import (
 )
 
 const (
-	Usage = `rnssh
+	Usage = `rnssh - easy ssh login to EC2.
 
 usage:
 
   rnssh [-f] [-p] [-s] [user@]query strings ...
-  rnssh -h
-  rnssh -v
   rnssh --init
 
 options:
@@ -30,29 +28,15 @@ options:
 	  (launch, start, stop, modify name, etc...)
 
   -P: use Public IP address. this is default ssh host type.
-      if you have set RNSSH_HOST_TYPE variable and value is private/name,
-      you can ssh with Public IP temporarily with this option.
-
   -p: use Private IP address. for VPN/Direct connect.
-      you can ssh with Private IP always with RNSSH_HOST_TYPE environment variable.
-
   -n: use Name tag.
       this option for ssh config that Host named by ec2 Name tag.
 
-      # example ssh config
-      Host EC2-Name-tag
-        HostName X.X.X.X (or domain)
-        User ec2-user
-        IdentityFile path/to/key
-
-      you can ssh with Name tag always with RNSSH_HOST_TYPE environment variable.
-
-  -r: target region. if you set 'AWS_REGION' environment variable, use it.
-      if you specify both, use -r options.
+  -r: target region. you can set default by --init (~/.rnssh/config)
 
   -s: show ssh command string that would be run. (debug)
 
-  --init: start wizard for default setting AWS region and HostType
+  --init: start wizard for default setting AWS region and rnssh host type.
           and save to config file (~/.rnssh/config)
 
 options for ssh:
@@ -69,26 +53,7 @@ options for help:
   -v: show version.
 
 args:
-
   query string...: filtering ec2 instances list.
-
-Environment variables:
-
-  RNSSH_HOST_TYPE: this variable can specify default ssh host types.
-
-    public  : use Public IP (default)
-    private : use Private IP
-    name    : use Name tag
-
-Caution
-*caution to option and arguments order*
-  the options must be before arguments.
-
-  - working
-  rnssh -s query string
-
-  - not working
-  rnssh query string -s
 `
 
 	ENV_AWS_REGION      = "AWS_REGION"
