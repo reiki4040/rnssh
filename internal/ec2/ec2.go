@@ -1,11 +1,8 @@
 package ec2
 
 import (
-	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"text/tabwriter"
 
@@ -13,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
+	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
@@ -79,25 +77,29 @@ type Instances struct {
 	Instances []*ec2.Instance `json:"ec2_instances"`
 }
 
-func DefaultEC2Handler() *EC2Handler {
+func NewEC2Handler(m *cstore.Manager) *EC2Handler {
 	return &EC2Handler{
 		CacheDirPath: rnssh.GetRnsshDir(),
+		Manager:      m,
 	}
 }
 
 type EC2Handler struct {
 	CacheDirPath string
+	Manager      *cstore.Manager
 }
 
-func (r *EC2Handler) GetChoosableEC2ListCachePath(region string) string {
-	return r.CacheDirPath + string(os.PathSeparator) + RNSSH_EC2_LIST_CACHE_PREFIX + region + ".json"
+func (r *EC2Handler) GetCacheStore(region string) (*cstore.CStore, error) {
+	cacheFileName := RNSSH_EC2_LIST_CACHE_PREFIX + region + ".json"
+	return r.Manager.New(cacheFileName, cstore.JSON)
 }
 
 func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]rnssh.Choosable, error) {
 	var instances []*ec2.Instance
-	cachePath := r.GetChoosableEC2ListCachePath(region)
+	cacheStore, _ := r.GetCacheStore(region)
 
-	if _, err := os.Stat(cachePath); os.IsNotExist(err) || reload {
+	is := Instances{}
+	if cErr := cacheStore.GetWithoutValidate(&is); cErr != nil || reload {
 		var err error
 		instances, err = GetInstances(region)
 		if err != nil {
@@ -105,74 +107,23 @@ func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool)
 			return nil, awsErr
 		}
 
-		if err != nil {
-			awsErr := fmt.Errorf("failed get instance: %s", err.Error())
-			return nil, awsErr
-		}
-
-		err = StoreCache(instances, cachePath)
-		if err != nil {
-			// only warn message
-			fmt.Printf("warn: failed store ec2 list cache: %s\n", err.Error())
-		}
-	} else {
-		var err error
-		instances, err = LoadCache(cachePath)
-		if err != nil {
-			// only warn message
-			fmt.Printf("warn: failed load ec2 list cache: %s, so try load from AWS.\n", err.Error())
-
-			instances, err = GetInstances(region)
+		is = Instances{Instances: instances}
+		if cacheStore != nil {
+			err := cacheStore.SaveWithoutValidate(&is)
 			if err != nil {
-				awsErr := fmt.Errorf("failed get instance: %s", err.Error())
-				return nil, awsErr
+				// only warn message
+				fmt.Printf("warn: failed store ec2 list cache: %s\n", err.Error())
 			}
 		}
 	}
 
-	choices := ConvertChoosableList(instances, hostType)
+	choices := ConvertChoosableList(is.Instances, hostType)
 	if len(choices) == 0 {
 		err := fmt.Errorf("there is no running instance.")
 		return nil, err
 	}
 
 	return choices, nil
-}
-
-func StoreCache(instances []*ec2.Instance, cachePath string) error {
-	cacheFile, err := os.Create(cachePath)
-	if err != nil {
-		return err
-	}
-	defer cacheFile.Close()
-
-	w := bufio.NewWriter(cacheFile)
-	enc := json.NewEncoder(w)
-	//enc.Indent("", "  ")
-	toJson := Instances{Instances: instances}
-	if err := enc.Encode(toJson); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func LoadCache(cachePath string) ([]*ec2.Instance, error) {
-	cacheFile, err := os.Open(cachePath)
-	if err != nil {
-		return nil, err
-	}
-	defer cacheFile.Close()
-
-	r := bufio.NewReader(cacheFile)
-	dec := json.NewDecoder(r)
-	instances := Instances{}
-	err = dec.Decode(&instances)
-	if err != nil {
-		return nil, err
-	}
-
-	return instances.Instances, nil
 }
 
 func GetInstances(region string) ([]*ec2.Instance, error) {

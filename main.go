@@ -201,7 +201,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sshArgs, err := chooseAndGenSshArgs(rOpt, flag.Args())
+	sshArgs, err := chooseAndGenSshArgs(rOpt, flag.Args(), m)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
@@ -273,7 +273,7 @@ func mergeConfig(conf *rnssh.RnsshConfig, opt CommandOption) *RnsshOption {
 	}
 }
 
-func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string) ([]string, error) {
+func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Manager) ([]string, error) {
 
 	// support user@host format
 	sshUser, hostname, err := getSshUserAndHostname(strings.Join(cmdArgs, " "))
@@ -286,7 +286,7 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string) ([]string, error) 
 		hostType = rOpt.HostType
 	}
 
-	handler := myec2.DefaultEC2Handler()
+	handler := myec2.NewEC2Handler(manager)
 	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
