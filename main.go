@@ -255,6 +255,7 @@ func mergeConfig(conf *rnssh.RnsshConfig, opt CommandOption) *RnsshOption {
 	}
 
 	return &RnsshOption{
+		Reload:       opt.Reload,
 		Region:       region,
 		HostType:     hostType,
 		SshUser:      sshUser,
