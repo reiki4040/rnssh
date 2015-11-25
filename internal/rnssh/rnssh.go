@@ -7,8 +7,7 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/BurntSushi/toml"
-
+	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
 )
 
@@ -145,61 +144,7 @@ func IdentityFileCheck(path string) error {
 	return nil
 }
 
-func GetConfig() (*Config, error) {
-	confFilePath := GetRnsshDir() + string(os.PathSeparator) + "config"
-	if _, err := os.Stat(confFilePath); os.IsNotExist(err) {
-		return &Config{}, nil
-	}
-
-	c, err := LoadConfig(confFilePath)
-	if err != nil {
-		return nil, err
-	}
-
-	err = c.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
-}
-
-func LoadConfig(configFilePath string) (*Config, error) {
-	var conf Config
-	if _, err := toml.DecodeFile(configFilePath, &conf); err != nil {
-		return nil, err
-	}
-
-	return &conf, nil
-}
-
-func SaveConfig(config *Config) error {
-	err := config.Validate()
-	if err != nil {
-		return err
-	}
-
-	confFilePath := GetRnsshDir() + string(os.PathSeparator) + "config"
-	return StoreConfig(config, confFilePath)
-}
-
-func StoreConfig(config *Config, confFilePath string) error {
-	confFile, err := os.Create(confFilePath)
-	if err != nil {
-		return err
-	}
-	defer confFile.Close()
-
-	// wrap with bufio.NewWriter in toml
-	enc := toml.NewEncoder(confFile)
-	if err := enc.Encode(config); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func DoConfigWizard() error {
+func DoConfigWizard(cs *cstore.CStore) error {
 	chosenRegion, err := choose("AWS region", "Please select default AWS region", AWSRegionList)
 	if err != nil {
 		return fmt.Errorf("region choose error:%s", err.Error())
@@ -229,7 +174,7 @@ func DoConfigWizard() error {
 		},
 	}
 
-	if err := SaveConfig(c); err != nil {
+	if err := cs.Save(c); err != nil {
 		return err
 	}
 

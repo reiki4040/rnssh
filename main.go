@@ -9,6 +9,7 @@ import (
 
 	flag "github.com/dotcloud/docker/pkg/mflag"
 
+	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
 	myec2 "github.com/reiki4040/rnssh/internal/ec2"
 	"github.com/reiki4040/rnssh/internal/rnssh"
@@ -159,8 +160,26 @@ func main() {
 		os.Exit(0)
 	}
 
+	err := opt.Validate()
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	m, err := cstore.NewManager("rnssh", rnssh.GetRnsshDir())
+	if err != nil {
+		fmt.Printf("can not create rnssh dir: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	cs, err := m.New("config", cstore.TOML)
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
 	if initWizard {
-		if err := rnssh.DoConfigWizard(); err != nil {
+		if err := rnssh.DoConfigWizard(cs); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		} else {
@@ -169,19 +188,8 @@ func main() {
 		}
 	}
 
-	err := opt.Validate()
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		os.Exit(1)
-	}
-
-	err = rnssh.CreateRnsshDir()
-	if err != nil {
-		fmt.Printf("can not create rnssh dir: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	conf, err := rnssh.GetConfig()
+	conf := rnssh.Config{}
+	err = cs.Get(&conf)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
@@ -193,7 +201,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sshArgs, err := chooseAndGenSshArgs(rOpt, flag.Args())
+	sshArgs, err := chooseAndGenSshArgs(rOpt, flag.Args(), m)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
@@ -265,7 +273,7 @@ func mergeConfig(conf *rnssh.RnsshConfig, opt CommandOption) *RnsshOption {
 	}
 }
 
-func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string) ([]string, error) {
+func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Manager) ([]string, error) {
 
 	// support user@host format
 	sshUser, hostname, err := getSshUserAndHostname(strings.Join(cmdArgs, " "))
@@ -278,7 +286,7 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string) ([]string, error) 
 		hostType = rOpt.HostType
 	}
 
-	handler := myec2.DefaultEC2Handler()
+	handler := myec2.NewEC2Handler(manager)
 	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
