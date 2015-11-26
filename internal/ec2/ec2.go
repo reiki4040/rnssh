@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/reiki4040/cstore"
+	"github.com/reiki4040/peco"
 	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
@@ -94,7 +95,7 @@ func (r *EC2Handler) GetCacheStore(region string) (*cstore.CStore, error) {
 	return r.Manager.New(cacheFileName, cstore.JSON)
 }
 
-func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]rnssh.Choosable, error) {
+func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]peco.Choosable, error) {
 	var instances []*ec2.Instance
 	cacheStore, _ := r.GetCacheStore(region)
 
@@ -148,7 +149,7 @@ func GetInstances(region string) ([]*ec2.Instance, error) {
 	return instances, nil
 }
 
-func ConvertChoosableList(instances []*ec2.Instance, targetType string) []rnssh.Choosable {
+func ConvertChoosableList(instances []*ec2.Instance, targetType string) []peco.Choosable {
 	choosableEC2List := make([]*ChoosableEC2, 0, len(instances))
 	for _, i := range instances {
 		e := convertChoosable(i, targetType)
@@ -159,7 +160,7 @@ func ConvertChoosableList(instances []*ec2.Instance, targetType string) []rnssh.
 
 	sort.Sort(ChoosableEC2s(choosableEC2List))
 
-	choices := make([]rnssh.Choosable, 0, len(choosableEC2List))
+	choices := make([]peco.Choosable, 0, len(choosableEC2List))
 	for _, c := range choosableEC2List {
 		choices = append(choices, c)
 	}
