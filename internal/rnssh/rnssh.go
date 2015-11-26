@@ -21,24 +21,6 @@ const (
 	HOST_TYPE_NAME_TAG   = "name"
 )
 
-type Choosable interface {
-	Choice() string
-	Value() string
-}
-
-type Choice struct {
-	C string
-	V string
-}
-
-func (c *Choice) Choice() string {
-	return c.C
-}
-
-func (c *Choice) Value() string {
-	return c.V
-}
-
 func GetRnsshDir() string {
 	rnsshDir := os.Getenv(ENV_HOME) + string(os.PathSeparator) + RNSSH_DIR_NAME
 	return rnsshDir
@@ -145,7 +127,7 @@ func IdentityFileCheck(path string) error {
 }
 
 func DoConfigWizard(cs *cstore.CStore) error {
-	chosenRegion, err := choose("AWS region", "Please select default AWS region", AWSRegionList)
+	chosenRegion, err := peco.Choose("AWS region", "Please select default AWS region", "", AWSRegionList)
 	if err != nil {
 		return fmt.Errorf("region choose error:%s", err.Error())
 	}
@@ -156,7 +138,7 @@ func DoConfigWizard(cs *cstore.CStore) error {
 		break
 	}
 
-	chosenHostType, err := choose("rnssh host type", "Please select default host type", HostTypeList)
+	chosenHostType, err := peco.Choose("rnssh host type", "Please select default host type", "", HostTypeList)
 	if err != nil {
 		return fmt.Errorf("region choose error:%s", err.Error())
 	}
@@ -182,55 +164,24 @@ func DoConfigWizard(cs *cstore.CStore) error {
 }
 
 var (
-	AWSRegionList = []Choosable{
-		&Choice{C: "ap-northeast-1 (Tokyo)", V: "ap-northeast-1"},
-		&Choice{C: "ap-southeast-1 (Singapore)", V: "ap-southeast-1"},
-		&Choice{C: "ap-southeast-2 (Sydney)", V: "ap-southeast-2"},
-		&Choice{C: "eu-central-1 (Frankfurt)", V: "eu-central-1"},
-		&Choice{C: "eu-west-1 (Ireland)", V: "eu-west-1"},
-		&Choice{C: "sa-east-1 (Sao Paulo)", V: "sa-east-1"},
-		&Choice{C: "us-east-1 (N. Virginia)", V: "us-east-1"},
-		&Choice{C: "us-west-1 (N. California)", V: "us-west-1"},
-		&Choice{C: "us-west-2 (Oregon)", V: "us-west-2"},
+	AWSRegionList = []peco.Choosable{
+		&peco.Choice{C: "ap-northeast-1 (Tokyo)", V: "ap-northeast-1"},
+		&peco.Choice{C: "ap-southeast-1 (Singapore)", V: "ap-southeast-1"},
+		&peco.Choice{C: "ap-southeast-2 (Sydney)", V: "ap-southeast-2"},
+		&peco.Choice{C: "eu-central-1 (Frankfurt)", V: "eu-central-1"},
+		&peco.Choice{C: "eu-west-1 (Ireland)", V: "eu-west-1"},
+		&peco.Choice{C: "sa-east-1 (Sao Paulo)", V: "sa-east-1"},
+		&peco.Choice{C: "us-east-1 (N. Virginia)", V: "us-east-1"},
+		&peco.Choice{C: "us-west-1 (N. California)", V: "us-west-1"},
+		&peco.Choice{C: "us-west-2 (Oregon)", V: "us-west-2"},
 	}
 
-	HostTypeList = []Choosable{
-		&Choice{C: "PublicIP (rnssh default)", V: "public"},
-		&Choice{C: "PrivateIP (for VPN or bastion)", V: "private"},
-		&Choice{C: "Name Tag (need ssh config settings)", V: "name"},
+	HostTypeList = []peco.Choosable{
+		&peco.Choice{C: "PublicIP (rnssh default)", V: "public"},
+		&peco.Choice{C: "PrivateIP (for VPN or bastion)", V: "private"},
+		&peco.Choice{C: "Name Tag (need ssh config settings)", V: "name"},
 	}
 )
-
-func choose(itemName, message string, choices []Choosable) ([]Choosable, error) {
-	if len(choices) == 0 {
-		err := fmt.Errorf("there is no %s.", itemName)
-		return nil, err
-	}
-
-	pecoChoices := make([]peco.Choosable, 0, len(choices))
-	for _, c := range choices {
-		pecoChoices = append(pecoChoices, c)
-	}
-
-	pecoOpt := &peco.PecoOptions{
-		OptPrompt: fmt.Sprintf("%s >", message),
-	}
-
-	result, err := peco.PecolibWithOptions(pecoChoices, pecoOpt)
-	if err != nil || len(result) == 0 {
-		err := fmt.Errorf("no select %s.", itemName)
-		return nil, err
-	}
-
-	chosen := make([]Choosable, 0, len(result))
-	for _, r := range result {
-		if c, ok := r.(Choosable); ok {
-			chosen = append(chosen, c)
-		}
-	}
-
-	return chosen, nil
-}
 
 func ask(msg, defaultValue string) (string, error) {
 	fmt.Printf("%s[%s]:", msg, defaultValue)

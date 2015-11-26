@@ -299,12 +299,14 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Ma
 	}
 
 	// show ec2 instances and choose intactive
-	targetHost, err := chooseTargetHost(choosableList, hostname)
+	targetHosts, err := peco.Choose("server", "which servers connect with ssh?", hostname, choosableList)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
 	}
 
+	l := len(targetHosts) - 1
+	targetHost := targetHosts[l]
 	sshHost := targetHost.Value()
 	sshArgs := genSshArgs(rOpt.SshUser, rOpt.IdentityFile, rOpt.Port, rOpt.StrictHostKeyCheckingNo, sshUser, sshHost)
 
@@ -322,42 +324,6 @@ func getSshUserAndHostname(sshTarget string) (string, string, error) {
 	}
 
 	return "", sshTarget, nil
-}
-
-func chooseTargetHost(choices []rnssh.Choosable, defaultQuery string) (rnssh.Choosable, error) {
-
-	if len(choices) == 0 {
-		err := fmt.Errorf("there is no running instance.")
-		return nil, err
-	}
-
-	pecoChoices := make([]peco.Choosable, 0, len(choices))
-	for _, c := range choices {
-		pecoChoices = append(pecoChoices, c)
-	}
-
-	pecoOpt := &peco.PecoOptions{
-		OptPrompt: "which do you choose the instance? >",
-		OptQuery:  defaultQuery,
-	}
-
-	result, err := peco.PecolibWithOptions(pecoChoices, pecoOpt)
-	if err != nil || len(result) == 0 {
-		err := fmt.Errorf("no select target.")
-		return nil, err
-	}
-
-	var targetHost rnssh.Choosable
-	for _, r := range result {
-		if ec2host, ok := r.(rnssh.Choosable); ok {
-			targetHost = ec2host
-		} else {
-			err := fmt.Errorf("this is bug. type is not Choosable: %v", r)
-			return nil, err
-		}
-	}
-
-	return targetHost, nil
 }
 
 func getSshTargetType(publicIP, privateIP, nameTag bool) string {
