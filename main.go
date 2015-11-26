@@ -11,8 +11,6 @@ import (
 
 	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
-	myec2 "github.com/reiki4040/rnssh/internal/ec2"
-	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
 const (
@@ -290,7 +288,7 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Ma
 		hostType = rOpt.HostType
 	}
 
-	handler := myec2.NewEC2Handler(manager)
+	handler := NewEC2Handler(manager)
 	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
