@@ -1,4 +1,4 @@
-package ec2
+package main
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
-	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
 const (
@@ -36,7 +35,7 @@ func (e *ChoosableEC2) Choice() string {
 	w := new(tabwriter.Writer)
 	var b bytes.Buffer
 	w.Init(&b, 14, 0, 4, ' ', 0)
-	if e.TargetType == rnssh.HOST_TYPE_NAME_TAG {
+	if e.TargetType == HOST_TYPE_NAME_TAG {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s", e.InstanceId, e.Name, publicIP, e.PrivateIP)
 		w.Flush()
 		return string(b.Bytes())
@@ -49,11 +48,11 @@ func (e *ChoosableEC2) Choice() string {
 
 func (e *ChoosableEC2) Value() string {
 	switch e.TargetType {
-	case rnssh.HOST_TYPE_PUBLIC_IP:
+	case HOST_TYPE_PUBLIC_IP:
 		return e.PublicIP
-	case rnssh.HOST_TYPE_PRIVATE_IP:
+	case HOST_TYPE_PRIVATE_IP:
 		return e.PrivateIP
-	case rnssh.HOST_TYPE_NAME_TAG:
+	case HOST_TYPE_NAME_TAG:
 		return e.Name
 	default:
 		return ""
@@ -80,14 +79,12 @@ type Instances struct {
 
 func NewEC2Handler(m *cstore.Manager) *EC2Handler {
 	return &EC2Handler{
-		CacheDirPath: rnssh.GetRnsshDir(),
-		Manager:      m,
+		Manager: m,
 	}
 }
 
 type EC2Handler struct {
-	CacheDirPath string
-	Manager      *cstore.Manager
+	Manager *cstore.Manager
 }
 
 func (r *EC2Handler) GetCacheStore(region string) (*cstore.CStore, error) {

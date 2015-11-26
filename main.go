@@ -11,8 +11,6 @@ import (
 
 	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
-	myec2 "github.com/reiki4040/rnssh/internal/ec2"
-	"github.com/reiki4040/rnssh/internal/rnssh"
 )
 
 const (
@@ -59,6 +57,10 @@ args:
 
 	ENV_AWS_REGION      = "AWS_REGION"
 	ENV_RNSSH_HOST_TYPE = "RNSSH_HOST_TYPE"
+
+	ENV_HOME = "HOME"
+
+	RNSSH_DIR_NAME = ".rnssh"
 )
 
 type CommandOption struct {
@@ -78,11 +80,11 @@ func (o *CommandOption) Validate() error {
 		return err
 	}
 
-	if err := rnssh.IdentityFileCheck(o.IdentityFile); err != nil {
+	if err := IdentityFileCheck(o.IdentityFile); err != nil {
 		return err
 	}
 
-	if err := rnssh.StrictHostKeyCheckingNoCheck(o.StrictHostKeyCheckingNo); err != nil {
+	if err := StrictHostKeyCheckingNoCheck(o.StrictHostKeyCheckingNo); err != nil {
 		return err
 	}
 
@@ -166,7 +168,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m, err := cstore.NewManager("rnssh", rnssh.GetRnsshDir())
+	m, err := cstore.NewManager("rnssh", getRnsshDir())
 	if err != nil {
 		fmt.Printf("can not create rnssh dir: %s\n", err.Error())
 		os.Exit(1)
@@ -179,7 +181,7 @@ func main() {
 	}
 
 	if initWizard {
-		if err := rnssh.DoConfigWizard(cs); err != nil {
+		if err := DoConfigWizard(cs); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		} else {
@@ -188,7 +190,7 @@ func main() {
 		}
 	}
 
-	conf := rnssh.Config{}
+	conf := Config{}
 	err = cs.Get(&conf)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
@@ -221,7 +223,7 @@ func main() {
 
 // merge option, config, ENV
 // priority [high] option > config > ENV [low]
-func mergeConfig(conf *rnssh.RnsshConfig, opt CommandOption) *RnsshOption {
+func mergeConfig(conf *RnsshConfig, opt CommandOption) *RnsshOption {
 
 	region := os.Getenv(ENV_AWS_REGION)
 	if opt.Region != "" {
@@ -281,12 +283,12 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Ma
 		return nil, fmt.Errorf("%s\n", err.Error())
 	}
 
-	hostType := rnssh.HOST_TYPE_PUBLIC_IP
+	hostType := HOST_TYPE_PUBLIC_IP
 	if rOpt.HostType != "" {
 		hostType = rOpt.HostType
 	}
 
-	handler := myec2.NewEC2Handler(manager)
+	handler := NewEC2Handler(manager)
 	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
@@ -330,15 +332,15 @@ func getSshTargetType(publicIP, privateIP, nameTag bool) string {
 
 	// overwrite by option
 	if publicIP {
-		return rnssh.HOST_TYPE_PUBLIC_IP
+		return HOST_TYPE_PUBLIC_IP
 	}
 
 	if privateIP {
-		return rnssh.HOST_TYPE_PRIVATE_IP
+		return HOST_TYPE_PRIVATE_IP
 	}
 
 	if nameTag {
-		return rnssh.HOST_TYPE_NAME_TAG
+		return HOST_TYPE_NAME_TAG
 	}
 
 	return ""
@@ -370,4 +372,9 @@ func genSshArgs(optSshUser, optIdentityFile string, optPort, optStrictHostKeyChe
 	args = append(args, sshHost)
 
 	return args
+}
+
+func getRnsshDir() string {
+	rnsshDir := os.Getenv(ENV_HOME) + string(os.PathSeparator) + RNSSH_DIR_NAME
+	return rnsshDir
 }
