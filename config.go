@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 
 	"github.com/reiki4040/cstore"
@@ -29,8 +30,8 @@ type RnsshConfig struct {
 	Name                       string `toml:"profile_name,omitempty"`
 	AWSRegion                  string `toml:"aws_region"`
 	HostType                   string `toml:"host_type"`
-	SshUser                    string `toml:"ssh_user"`
-	SshIdentityFile            string `toml:"ssh_identitiy_file"`
+	SshUser                    string `toml:"ssh_user,omitempty"`
+	SshIdentityFile            string `toml:"ssh_identitiy_file,omitempty"`
 	SshPort                    int    `toml:"ssh_port,omitzero"`
 	SshStrictHostKeyCheckingNo int    `toml:"ssh_strict_host_key_checking_no,omitzero"`
 
@@ -116,7 +117,7 @@ func DoConfigWizard(cs *cstore.CStore) error {
 
 	chosenHostType, err := peco.Choose("rnssh host type", "Please select default host type", "", HostTypeList)
 	if err != nil {
-		return fmt.Errorf("region choose error:%s", err.Error())
+		return fmt.Errorf("host type choose error:%s", err.Error())
 	}
 
 	hostType := ""
@@ -125,10 +126,27 @@ func DoConfigWizard(cs *cstore.CStore) error {
 		break
 	}
 
+	chosenStrict, err := peco.Choose("rnssh StrictHostKeyChecking option", "Please select about StrictHostKeyChecking (recommend to Not specify)", "", StrictHostKeyCheckingList)
+	if err != nil {
+		return fmt.Errorf("StrictHostKeyChecking choose error:%s", err.Error())
+	}
+
+	var strict int
+	for _, c := range chosenStrict {
+		strict, err = strconv.Atoi(c.Value())
+		if err != nil {
+			// error then disabled
+			strict = 0
+		}
+
+		break
+	}
+
 	c := &Config{
 		Default: RnsshConfig{
-			AWSRegion: region,
-			HostType:  hostType,
+			AWSRegion:                  region,
+			HostType:                   hostType,
+			SshStrictHostKeyCheckingNo: strict,
 		},
 	}
 
@@ -156,6 +174,11 @@ var (
 		&peco.Choice{C: "PublicIP (rnssh default)", V: "public"},
 		&peco.Choice{C: "PrivateIP (for VPN or bastion)", V: "private"},
 		&peco.Choice{C: "Name Tag (need ssh config settings)", V: "name"},
+	}
+
+	StrictHostKeyCheckingList = []peco.Choosable{
+		&peco.Choice{C: "Not specify (rnssh Default)", V: "0"},
+		&peco.Choice{C: "StrictHostKeyChecking=NO (if you don't know this ssh option, then deprecated)", V: "1"},
 	}
 )
 
