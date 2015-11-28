@@ -30,8 +30,8 @@ type RnsshConfig struct {
 	Name                       string `toml:"profile_name,omitempty"`
 	AWSRegion                  string `toml:"aws_region"`
 	HostType                   string `toml:"host_type"`
-	SshUser                    string `toml:"ssh_user"`
-	SshIdentityFile            string `toml:"ssh_identitiy_file"`
+	SshUser                    string `toml:"ssh_user,omitempty"`
+	SshIdentityFile            string `toml:"ssh_identitiy_file,omitempty"`
 	SshPort                    int    `toml:"ssh_port,omitzero"`
 	SshStrictHostKeyCheckingNo int    `toml:"ssh_strict_host_key_checking_no,omitzero"`
 
