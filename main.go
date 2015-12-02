@@ -74,6 +74,7 @@ type CommandOption struct {
 	Port                    int
 	StrictHostKeyCheckingNo int
 	UseSshConfig            bool
+	UseEC2                  bool
 }
 
 func (o *CommandOption) Validate() error {
@@ -87,6 +88,10 @@ func (o *CommandOption) Validate() error {
 
 	if err := StrictHostKeyCheckingNoCheck(o.StrictHostKeyCheckingNo); err != nil {
 		return err
+	}
+
+	if o.UseSshConfig && o.UseEC2 {
+		return fmt.Errorf("can not specify both --use-ssh-config and --use-ec2")
 	}
 
 	return nil
@@ -143,6 +148,7 @@ func init() {
 	flag.IntVar(&opt.StrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, -1, "suppress host key checking. 1: ON, 0: OFF, -1: default(OFF)")
 
 	flag.BoolVar(&opt.UseSshConfig, []string{"-use-ssh-config"}, false, "load from ssh config")
+	flag.BoolVar(&opt.UseEC2, []string{"-use-ec2"}, false, "load from ec2")
 
 	flag.Parse()
 }
@@ -202,7 +208,7 @@ func main() {
 	}
 
 	rOpt := mergeConfig(&conf.Default, *opt)
-	if rOpt.Region == "" {
+	if !rOpt.UseSshConfig && rOpt.Region == "" {
 		fmt.Println("region is empty. please specify by region option (-r) or AWS_REGION envirnment variable.")
 		os.Exit(1)
 	}
@@ -271,6 +277,10 @@ func mergeConfig(conf *RnsshConfig, opt CommandOption) *RnsshOption {
 	useSshConfig := conf.UseSshConfig
 	if opt.UseSshConfig {
 		useSshConfig = true
+	}
+
+	if opt.UseEC2 {
+		useSshConfig = false
 	}
 
 	return &RnsshOption{

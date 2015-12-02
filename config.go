@@ -28,8 +28,8 @@ func (c *Config) Validate() error {
 
 type RnsshConfig struct {
 	Name                       string `toml:"profile_name,omitempty"`
-	AWSRegion                  string `toml:"aws_region"`
-	HostType                   string `toml:"host_type"`
+	AWSRegion                  string `toml:"aws_region,omitempty"`
+	HostType                   string `toml:"host_type,omitempty"`
 	SshUser                    string `toml:"ssh_user,omitempty"`
 	SshIdentityFile            string `toml:"ssh_identitiy_file,omitempty"`
 	SshPort                    int    `toml:"ssh_port,omitzero"`
@@ -106,31 +106,111 @@ func IdentityFileCheck(path string) error {
 }
 
 func DoConfigWizard(cs *cstore.CStore) error {
+
+	chosenResourceType, err := peco.Choose("rnssh ResourceType option", "Please select resource type", "", ResourceTypeList)
+	if err != nil {
+		return fmt.Errorf("ResourceType choose error:%s", err.Error())
+	}
+
+	var resourceType string
+	// later win
+	for _, c := range chosenResourceType {
+		switch c.Value() {
+		case "ec2":
+			//
+		case "ssh_config":
+			resourceType = "ssh"
+		}
+	}
+
+	var c *Config
+	var region, hostType string
+	var useSshConfig bool
+	var strictHostKeyChecking int
+	switch resourceType {
+	case "":
+		region, hostType, err = Ec2ConfigWizard()
+		if err != nil {
+			return err
+		}
+
+		strictHostKeyChecking, err = StrictHostKeyCheckingWizard()
+		if err != nil {
+			return err
+		}
+
+		useSshConfig = false
+
+	case "ssh":
+		strictHostKeyChecking, err = StrictHostKeyCheckingWizard()
+		if err != nil {
+			return err
+		}
+
+		chosenContinue, err := peco.Choose("next setting", "next, continue to AWS settings?", "", ContinueList)
+		if err != nil {
+			return err
+		}
+
+		chosen := ""
+		for _, c := range chosenContinue {
+			chosen = c.Value()
+		}
+
+		if chosen == "yes" {
+			region, hostType, err = Ec2ConfigWizard()
+			if err != nil {
+				return err
+			}
+		}
+
+		useSshConfig = true
+	}
+
+	c = &Config{
+		Default: RnsshConfig{
+			AWSRegion:                  region,
+			HostType:                   hostType,
+			UseSshConfig:               useSshConfig,
+			SshStrictHostKeyCheckingNo: strictHostKeyChecking,
+		},
+	}
+
+	if err := cs.Save(c); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Ec2ConfigWizard() (string, string, error) {
 	chosenRegion, err := peco.Choose("AWS region", "Please select default AWS region", "", AWSRegionList)
 	if err != nil {
-		return fmt.Errorf("region choose error:%s", err.Error())
+		return "", "", fmt.Errorf("region choose error:%s", err.Error())
 	}
 
 	region := ""
 	for _, c := range chosenRegion {
 		region = c.Value()
-		break
 	}
 
 	chosenHostType, err := peco.Choose("rnssh host type", "Please select default host type", "", HostTypeList)
 	if err != nil {
-		return fmt.Errorf("host type choose error:%s", err.Error())
+		return "", "", fmt.Errorf("host type choose error:%s", err.Error())
 	}
 
 	hostType := ""
 	for _, c := range chosenHostType {
 		hostType = c.Value()
-		break
 	}
 
+	return region, hostType, nil
+}
+
+func StrictHostKeyCheckingWizard() (int, error) {
 	chosenStrict, err := peco.Choose("rnssh StrictHostKeyChecking option", "Please select about StrictHostKeyChecking (recommend to Not specify)", "", StrictHostKeyCheckingList)
 	if err != nil {
-		return fmt.Errorf("StrictHostKeyChecking choose error:%s", err.Error())
+		return -1, fmt.Errorf("StrictHostKeyChecking choose error:%s", err.Error())
 	}
 
 	var strict int
@@ -140,23 +220,9 @@ func DoConfigWizard(cs *cstore.CStore) error {
 			// error then disabled
 			strict = 0
 		}
-
-		break
 	}
 
-	c := &Config{
-		Default: RnsshConfig{
-			AWSRegion:                  region,
-			HostType:                   hostType,
-			SshStrictHostKeyCheckingNo: strict,
-		},
-	}
-
-	if err := cs.Save(c); err != nil {
-		return err
-	}
-
-	return nil
+	return strict, nil
 }
 
 var (
@@ -181,6 +247,16 @@ var (
 	StrictHostKeyCheckingList = []peco.Choosable{
 		&peco.Choice{C: "Not specify (rnssh Default)", V: "0"},
 		&peco.Choice{C: "StrictHostKeyChecking=NO (if you don't know this ssh option, then deprecated)", V: "1"},
+	}
+
+	ResourceTypeList = []peco.Choosable{
+		&peco.Choice{C: "AWS EC2 (rnssh Default)", V: "ec2"},
+		&peco.Choice{C: "ssh config (load from ~/.ssh/config)", V: "ssh_config"},
+	}
+
+	ContinueList = []peco.Choosable{
+		&peco.Choice{C: "No.", V: "no"},
+		&peco.Choice{C: "Yes, continue to AWS settings", V: "yes"},
 	}
 )
 
