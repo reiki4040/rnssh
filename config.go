@@ -35,6 +35,8 @@ type RnsshConfig struct {
 	SshPort                    int    `toml:"ssh_port,omitzero"`
 	SshStrictHostKeyCheckingNo int    `toml:"ssh_strict_host_key_checking_no,omitzero"`
 
+	UseSshConfig bool `toml:"use_ssh_config"`
+
 	//AWSKey                     string `toml:"aws_access_key_id"`
 	//AWSSecret                  string `toml:"aws_secret_access_key"`
 }
