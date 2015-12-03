@@ -112,15 +112,10 @@ func DoConfigWizard(cs *cstore.CStore) error {
 		return fmt.Errorf("ResourceType choose error:%s", err.Error())
 	}
 
-	var resourceType string
+	resourceType := "ec2"
 	// later win
 	for _, c := range chosenResourceType {
-		switch c.Value() {
-		case "ec2":
-			//
-		case "ssh_config":
-			resourceType = "ssh"
-		}
+		resourceType = c.Value()
 	}
 
 	var c *Config
@@ -128,7 +123,7 @@ func DoConfigWizard(cs *cstore.CStore) error {
 	var useSshConfig bool
 	var strictHostKeyChecking int
 	switch resourceType {
-	case "":
+	case "ec2":
 		region, hostType, err = Ec2ConfigWizard()
 		if err != nil {
 			return err
@@ -141,7 +136,7 @@ func DoConfigWizard(cs *cstore.CStore) error {
 
 		useSshConfig = false
 
-	case "ssh":
+	case "ssh_config":
 		strictHostKeyChecking, err = StrictHostKeyCheckingWizard()
 		if err != nil {
 			return err
