@@ -7,7 +7,7 @@ rnssh
 [release]: https://github.com/reiki4040/rnssh/releases
 [license]: https://github.com/reiki4040/rnssh/blob/master/LICENSE
 
-easy ssh to ec2 instance.
+easy ssh to ec2 instance / hosts in ssh config file.
 now MacOS only.
 
 ## How to install and settings
@@ -25,9 +25,13 @@ download rnssh binary file and set PATH
 
 ## Settings
 
+run `rnssh --init` and save to rnssh config (~/.rnssh/config)
+
+### AWS EC2
+
 - set AWS credentials
 - set AWS default region
-- ssh config (Optional but recommended)
+- ssh config
 
 ### set AWS credentials
 
@@ -115,7 +119,7 @@ web server2 Y.Y.Y.Y
 
 if you delete character, then show other name instances again.
 
-### change default ssh host type with `--init` or edit `~/.rnssh/config`
+### [AWS EC2] change default ssh host type with `--init`
 
 if you always rnssh with `-p`(Private IP) or `-n`(Name Tag), you can edit default with `rnssh --init`
 
@@ -126,6 +130,10 @@ host type's valid values are below.
 - `name`(need ssh config)
 
 and you can use `-P` `-p` `-n`, when you want to use other ssh host type temporarily.
+
+### switch ssh config / AWS EC2
+
+if you want to use other temporarily, then you can use `--use-ssh-config` and `--use-ec2` option.
 
 ## Update version
 
