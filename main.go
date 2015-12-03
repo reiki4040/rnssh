@@ -209,7 +209,7 @@ func main() {
 
 	rOpt := mergeConfig(&conf.Default, *opt)
 	if !rOpt.UseSshConfig && rOpt.Region == "" {
-		fmt.Println("region is empty. please specify by region option (-r) or AWS_REGION envirnment variable.")
+		fmt.Println("region is empty. please specify by region option (-r) or set default region with --init option")
 		os.Exit(1)
 	}
 
