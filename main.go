@@ -73,6 +73,8 @@ type CommandOption struct {
 	IdentityFile            string
 	Port                    int
 	StrictHostKeyCheckingNo int
+	UseSshConfig            bool
+	UseEC2                  bool
 }
 
 func (o *CommandOption) Validate() error {
@@ -86,6 +88,10 @@ func (o *CommandOption) Validate() error {
 
 	if err := StrictHostKeyCheckingNoCheck(o.StrictHostKeyCheckingNo); err != nil {
 		return err
+	}
+
+	if o.UseSshConfig && o.UseEC2 {
+		return fmt.Errorf("can not specify both --use-ssh-config and --use-ec2")
 	}
 
 	return nil
@@ -107,6 +113,7 @@ type RnsshOption struct {
 	IdentityFile            string
 	Port                    int
 	StrictHostKeyCheckingNo int
+	UseSshConfig            bool
 }
 
 var (
@@ -139,6 +146,9 @@ func init() {
 	flag.StringVar(&opt.IdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
 	flag.IntVar(&opt.Port, []string{"-port"}, 0, "specify ssh port")
 	flag.IntVar(&opt.StrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, -1, "suppress host key checking. 1: ON, 0: OFF, -1: default(OFF)")
+
+	flag.BoolVar(&opt.UseSshConfig, []string{"-use-ssh-config"}, false, "load from ssh config")
+	flag.BoolVar(&opt.UseEC2, []string{"-use-ec2"}, false, "load from ec2")
 
 	flag.Parse()
 }
@@ -198,8 +208,8 @@ func main() {
 	}
 
 	rOpt := mergeConfig(&conf.Default, *opt)
-	if rOpt.Region == "" {
-		fmt.Println("region is empty. please specify by region option (-r) or AWS_REGION envirnment variable.")
+	if !rOpt.UseSshConfig && rOpt.Region == "" {
+		fmt.Println("region is empty. please specify by region option (-r) or set default region with --init option")
 		os.Exit(1)
 	}
 
@@ -264,6 +274,15 @@ func mergeConfig(conf *RnsshConfig, opt CommandOption) *RnsshOption {
 		strictHostKeyCheckingNo = opt.StrictHostKeyCheckingNo
 	}
 
+	useSshConfig := conf.UseSshConfig
+	if opt.UseSshConfig {
+		useSshConfig = true
+	}
+
+	if opt.UseEC2 {
+		useSshConfig = false
+	}
+
 	return &RnsshOption{
 		Reload:       opt.Reload,
 		Region:       region,
@@ -272,6 +291,7 @@ func mergeConfig(conf *RnsshConfig, opt CommandOption) *RnsshOption {
 		IdentityFile: identityFile,
 		Port:         port,
 		StrictHostKeyCheckingNo: strictHostKeyCheckingNo,
+		UseSshConfig:            useSshConfig,
 	}
 }
 
@@ -288,16 +308,32 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Ma
 		hostType = rOpt.HostType
 	}
 
-	handler := NewEC2Handler(manager)
-	choosableList, err := handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		os.Exit(1)
-	}
+	var choosableList []peco.Choosable
+	if rOpt.UseSshConfig {
+		var err error
+		choosableList, err = LoadSshConfigChoosableList()
+		if err != nil {
+			fmt.Printf("%s\n", err.Error())
+			os.Exit(1)
+		}
 
-	if len(choosableList) == 0 {
-		fmt.Printf("there is no instance. not running %s\n", rOpt.Region)
-		os.Exit(1)
+		if len(choosableList) == 0 {
+			fmt.Println("ssh config does not have host settings")
+			os.Exit(1)
+		}
+	} else {
+		var err error
+		handler := NewEC2Handler(manager)
+		choosableList, err = handler.LoadTargetHost(hostType, rOpt.Region, rOpt.Reload)
+		if err != nil {
+			fmt.Printf("%s\n", err.Error())
+			os.Exit(1)
+		}
+
+		if len(choosableList) == 0 {
+			fmt.Printf("there is no instance. not running %s\n", rOpt.Region)
+			os.Exit(1)
+		}
 	}
 
 	// show ec2 instances and choose intactive
