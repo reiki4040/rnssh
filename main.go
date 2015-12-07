@@ -202,7 +202,7 @@ func main() {
 
 	conf := Config{}
 	err = cs.Get(&conf)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		fmt.Printf("%s\n", err.Error())
 		os.Exit(1)
 	}
