@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"regexp"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/reiki4040/peco"
@@ -60,8 +61,8 @@ func ParseSshConfig() ([]SshConfig, error) {
 	defer fp.Close()
 
 	s := bufio.NewScanner(fp)
-	hostRe := regexp.MustCompile("Host\\s+([^ *#]+)")
-	hostnameRe := regexp.MustCompile("HostName\\s+([^ *#]+)")
+	hostRe := regexp.MustCompile("Host\\s+([^ #]+)")
+	hostnameRe := regexp.MustCompile("HostName\\s+([^ #]+)")
 
 	inHost := false
 	configs := make([]SshConfig, 0)
@@ -75,6 +76,10 @@ func ParseSshConfig() ([]SshConfig, error) {
 			}
 
 			host = result[0][1]
+			if i := strings.Index(host, "*"); i != -1 {
+				continue
+			}
+
 			inHost = true
 		} else {
 			result := hostnameRe.FindAllStringSubmatch(line, -1)
@@ -82,9 +87,14 @@ func ParseSshConfig() ([]SshConfig, error) {
 				continue
 			}
 
+			hostname := result[0][1]
+			if i := strings.Index(hostname, "*"); i != -1 {
+				continue
+			}
+
 			c := SshConfig{
 				Host:     host,
-				HostName: result[0][1],
+				HostName: hostname,
 			}
 
 			configs = append(configs, c)
