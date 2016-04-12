@@ -122,7 +122,7 @@ type RnsshOption struct {
 var (
 	version   string
 	hash      string
-	builddate string
+	goversion string
 
 	show_version bool
 	show_usage   bool
@@ -168,7 +168,7 @@ func init() {
 }
 
 func showVersion() {
-	fmt.Printf("%s (%s) built:%s\n", version, hash, builddate)
+	fmt.Printf("%s (%s) built with %s\n", version, hash, goversion)
 }
 
 func usage() {

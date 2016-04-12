@@ -1,5 +1,5 @@
 #!/bin/sh
-version=0.3.9
+version=0.4.0
 
 WORK_DIR="work"
 DEST_DIR="archives"
@@ -26,8 +26,8 @@ do
     # build
     cd $current
     HASH=$(git rev-parse --verify HEAD)
-    BUILDDATE=$(date '+%Y/%m/%d %H:%M:%S %Z')
-    GOOS="$os" GOARCH="$arch" gom build -o "$archive_dir/rnssh" -ldflags "-X main.version=$version -X main.hash=$HASH -X \"main.builddate=$BUILDDATE\""
+    GOVERSION=$(go version)
+    GOOS="$os" GOARCH="$arch" go build -o "$archive_dir/rnssh" -ldflags "-X main.version=$version -X main.hash=$HASH -X \"main.goversion=$GOVERSION\""
 
     # something
     for f in $files

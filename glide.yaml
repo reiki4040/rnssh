@@ -1,0 +1,9 @@
+package: github.com/reiki4040/rnssh
+import:
+- package: github.com/aws/aws-sdk-go
+  subpackages:
+  - aws
+  - aws/session
+  - service/ec2
+- package: github.com/reiki4040/cstore
+- package: github.com/reiki4040/peco
