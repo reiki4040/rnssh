@@ -1,13 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-
-	flag "github.com/dotcloud/docker/pkg/mflag"
 
 	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
@@ -19,7 +18,7 @@ const (
 usage:
 
   rnssh [-f] [-p] [-s] [user@]query strings ...
-  rnssh --init
+  rnssh -init
 
 options:
   -f: reload ec2 instances infomaion. connect to AWS.
@@ -35,14 +34,14 @@ options:
 
   -s: show ssh command string that would be run. (debug)
 
-  --init: start wizard for default setting AWS region and rnssh host type.
+  -init: start wizard for default setting AWS region and rnssh host type.
           and save to config file (~/.rnssh/config)
 
 options for ssh:
   -l: ssh user.
   -i: identity file path.
-  --port: ssh port.
-  --strict-host-key-checking-no: suppress host key checking.
+  -port: ssh port.
+  -strict-host-key-checking-no: suppress host key checking.
                                  1: using 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
                                  0: OFF
                                 -1: Default(OFF)
@@ -53,6 +52,10 @@ options for help:
 
 args:
   query string...: filtering ec2 instances list.
+
+notice:
+  breaking changes from 0.4.0:
+    modified option flag -- -> - (ex: --help -> -help)
 `
 
 	ENV_AWS_REGION      = "AWS_REGION"
@@ -131,24 +134,35 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&show_version, []string{"v", "-version"}, false, "show version.")
-	flag.BoolVar(&show_usage, []string{"h", "-help"}, false, "show this usage.")
-	flag.BoolVar(&initWizard, []string{"-init"}, false, "run initial configuration wizard.")
+	flag.BoolVar(&show_version, "version", false, "show version.")
+	flag.BoolVar(&show_version, "v", false, "show version.")
+	flag.BoolVar(&show_usage, "h", false, "show this usage.")
+	flag.BoolVar(&show_usage, "help", false, "show this usage.")
+	flag.BoolVar(&initWizard, "init", false, "run initial configuration wizard.")
 
-	flag.BoolVar(&opt.Reload, []string{"f", "-force"}, false, "reload ec2 (force connect to AWS)")
-	flag.BoolVar(&opt.PublicIP, []string{"P", "-public-ip"}, false, "ssh with EC2 Public IP")
-	flag.BoolVar(&opt.PrivateIP, []string{"p", "-private-ip"}, false, "ssh with EC2 Private IP")
-	flag.BoolVar(&opt.NameTag, []string{"n", "-name-tag"}, false, "ssh with EC2 Name tag")
-	flag.BoolVar(&showCommand, []string{"s", "-show-command"}, false, "show ssh command that will do (debug)")
+	flag.BoolVar(&opt.Reload, "f", false, "reload ec2 (force connect to AWS)")
+	flag.BoolVar(&opt.Reload, "force", false, "reload ec2 (force connect to AWS)")
+	flag.BoolVar(&opt.PublicIP, "P", false, "ssh with EC2 Public IP")
+	flag.BoolVar(&opt.PublicIP, "public-ip", false, "ssh with EC2 Public IP")
+	flag.BoolVar(&opt.PrivateIP, "p", false, "ssh with EC2 Private IP")
+	flag.BoolVar(&opt.PrivateIP, "private-ip", false, "ssh with EC2 Private IP")
+	flag.BoolVar(&opt.NameTag, "n", false, "ssh with EC2 Name tag")
+	flag.BoolVar(&opt.NameTag, "name-tag", false, "ssh with EC2 Name tag")
+	flag.BoolVar(&showCommand, "s", false, "show ssh command that will do (debug)")
+	flag.BoolVar(&showCommand, "show-command", false, "show ssh command that will do (debug)")
 
-	flag.StringVar(&opt.Region, []string{"r", "-region"}, "", "specify region")
-	flag.StringVar(&opt.SshUser, []string{"l", "-user"}, "", "specify ssh user")
-	flag.StringVar(&opt.IdentityFile, []string{"i", "-identity-file"}, "", "specify ssh identity file")
-	flag.IntVar(&opt.Port, []string{"-port"}, 0, "specify ssh port")
-	flag.IntVar(&opt.StrictHostKeyCheckingNo, []string{"-strict-host-key-checking-no"}, -1, "suppress host key checking. 1: ON, 0: OFF, -1: default(OFF)")
+	flag.StringVar(&opt.Region, "r", "", "specify region")
+	flag.StringVar(&opt.Region, "region", "", "specify region")
 
-	flag.BoolVar(&opt.UseSshConfig, []string{"-use-ssh-config"}, false, "load from ssh config")
-	flag.BoolVar(&opt.UseEC2, []string{"-use-ec2"}, false, "load from ec2")
+	flag.StringVar(&opt.SshUser, "l", "", "specify ssh user")
+	flag.StringVar(&opt.SshUser, "user", "", "specify ssh user")
+	flag.StringVar(&opt.IdentityFile, "i", "", "specify ssh identity file")
+	flag.StringVar(&opt.IdentityFile, "identity-file", "", "specify ssh identity file")
+	flag.IntVar(&opt.Port, "port", 0, "specify ssh port")
+	flag.IntVar(&opt.StrictHostKeyCheckingNo, "strict-host-key-checking-no", -1, "suppress host key checking. 1: ON, 0: OFF, -1: default(OFF)")
+
+	flag.BoolVar(&opt.UseSshConfig, "use-ssh-config", false, "load from ssh config")
+	flag.BoolVar(&opt.UseEC2, "use-ec2", false, "load from ec2")
 
 	flag.Parse()
 }
