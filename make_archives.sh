@@ -8,7 +8,7 @@ if [ -z "$current" ]; then
   exit 1
 fi
 oss="darwin"
-archs="386 amd64"
+archs="amd64"
 
 files="LICENSE README.md"
 
