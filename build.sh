@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VERSION=0.3.9
+VERSION=0.4.0
 HASH=$(git rev-parse --verify HEAD)
-BUILDDATE=$(date '+%Y/%m/%d %H:%M:%S %Z')
+GOVERSION=$(go version)
 
-gom build -ldflags "-X main.version=$VERSION -X main.hash=$HASH -X \"main.builddate=$BUILDDATE\""
+go build -ldflags "-X main.version=$VERSION -X main.hash=$HASH -X \"main.goversion=$GOVERSION\""

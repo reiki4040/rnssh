@@ -10,6 +10,15 @@ rnssh
 easy ssh to ec2 instance / hosts in ssh config file.
 now MacOS only.
 
+## NOTICE
+
+modified option format `--` -> `-` from version 0.4.0.
+like:
+
+- `--help` -> `-help`
+- `--port` -> `-port`
+- etc...
+
 ## How to install and settings
 
 ### homebrew (recommend)
@@ -25,7 +34,7 @@ download rnssh binary file and set PATH
 
 ## Settings
 
-run `rnssh --init` and save to rnssh config (~/.rnssh/config)
+run `rnssh -init` and save to rnssh config (~/.rnssh/config)
 
 ### AWS EC2
 
@@ -52,7 +61,7 @@ export AWS_SECRET_ACCESS_KEY=
 
 ### set default AWS region and host type
 
-run `rnssh --init` and save to rnssh config (~/.rnssh/config)
+run `rnssh -init` and save to rnssh config (~/.rnssh/config)
 
 ### ssh config
 
@@ -119,9 +128,9 @@ web server2 Y.Y.Y.Y
 
 if you delete character, then show other name instances again.
 
-### [AWS EC2] change default ssh host type with `--init`
+### [AWS EC2] change default ssh host type with `-init`
 
-if you always rnssh with `-p`(Private IP) or `-n`(Name Tag), you can edit default with `rnssh --init`
+if you always rnssh with `-p`(Private IP) or `-n`(Name Tag), you can edit default with `rnssh -init`
 
 host type's valid values are below.
 
@@ -133,7 +142,7 @@ and you can use `-P` `-p` `-n`, when you want to use other ssh host type tempora
 
 ### switch ssh config / AWS EC2
 
-if you want to use other temporarily, then you can use `--use-ssh-config` and `--use-ec2` option.
+if you want to use other temporarily, then you can use `-use-ssh-config` and `-use-ec2` option.
 
 ## Update version
 
