@@ -1,8 +1,8 @@
 hash: f101ecc9038bc3be7f354288788100015e0fd9fa36de032f981f8db09ed9d641
-updated: 2016-09-04T23:38:11.829003372+09:00
+updated: 2016-09-13T23:43:51.258026655+09:00
 imports:
 - name: github.com/aws/aws-sdk-go
-  version: 6ac30507cca29249f4d49af45a8efc98b84088ee
+  version: 1eda36db14da389a03c5e7d41f2172e353c2ce57
   subpackages:
   - aws
   - aws/awserr
@@ -46,5 +46,5 @@ imports:
   subpackages:
   - keyseq
 - name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+  version: 31c299268d302dd0aa9a0dcf765a3d58971ac83f
 testImports: []
