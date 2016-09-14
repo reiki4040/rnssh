@@ -14,7 +14,9 @@ rnssh build script.
 
 [Options]
   -a: create archive for release
+  -g: run glide up when build
   -s: show current build version for check
+  -q: quiet mode
 
 _EOB
 }
