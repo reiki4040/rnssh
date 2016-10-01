@@ -69,7 +69,7 @@ func HostTypeCheck(t string) error {
 	case "":
 		return nil
 	default:
-		return fmt.Errorf("invalid HostType value: %s. allow public, private, name or \"\"(default)")
+		return fmt.Errorf("invalid HostType value: %s. allow public, private, name or \"\"(default)", t)
 	}
 }
 
