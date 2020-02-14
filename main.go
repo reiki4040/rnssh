@@ -120,9 +120,8 @@ type RnsshOption struct {
 }
 
 var (
-	version   string
-	hash      string
-	goversion string
+	version  string
+	revision string
 
 	show_version bool
 	show_usage   bool
@@ -168,7 +167,7 @@ func init() {
 }
 
 func showVersion() {
-	fmt.Printf("%s (%s) built with %s\n", version, hash, goversion)
+	fmt.Printf("%s (%s)", version, revision)
 }
 
 func usage() {
@@ -298,12 +297,12 @@ func mergeConfig(conf *RnsshConfig, opt CommandOption) *RnsshOption {
 	}
 
 	return &RnsshOption{
-		Reload:       opt.Reload,
-		Region:       region,
-		HostType:     hostType,
-		SshUser:      sshUser,
-		IdentityFile: identityFile,
-		Port:         port,
+		Reload:                  opt.Reload,
+		Region:                  region,
+		HostType:                hostType,
+		SshUser:                 sshUser,
+		IdentityFile:            identityFile,
+		Port:                    port,
 		StrictHostKeyCheckingNo: strictHostKeyCheckingNo,
 		UseSshConfig:            useSshConfig,
 	}
