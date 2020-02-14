@@ -1,0 +1,61 @@
+project_name: rnssh
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: .
+    binary: rnssh
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.revision={{.ShortCommit}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    replacements:
+      darwin: darwin
+      linux: linux
+      windows: windows
+      386: i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+release:
+  prerelease: auto
+
+# homebrew
+brews:
+  - description: "Easy ssh to EC2"
+    github:
+      owner: reiki4040
+      name: homebrew-tap
+    homepage: "https://github.com/reiki4040/rnssh"
+    install: |
+      bin.install "rnssh"
+    caveats: |
+      # rnssh need AWS access key for working.
+      # Please set key/secret to AWS credentials (~/.aws/credentials)
+
+      [default]
+      aws_access_key_id=your_key_id
+      aws_secret_access_key=your_secret
+
+      # or environment variable for AWS connection.
+      # (~/.bashrc, ~/.zshrc or other.)
+
+      export AWS_ACCESS_KEY_ID=YOUR_AWS_ACCESS_KEY
+      export AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
+
+      # set default aws region.
+      rnssh -init
+
+    #custom_block: # later use for devel version
