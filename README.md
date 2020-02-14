@@ -10,22 +10,12 @@ rnssh
 easy ssh to ec2 instance / hosts in ssh config file.
 now MacOS only.
 
-## NOTICE
-
-modified option format `--` -> `-` from version 0.4.0.
-like:
-
-- `--help` -> `-help`
-- `--port` -> `-port`
-- etc...
-
 ## How to install and settings
 
 ### homebrew (recommend)
 
 ```
-brew tap reiki4040/rnssh
-brew install rnssh
+brew install reiki4040/tap/rnssh
 ```
 
 ### download archive and set PATH
