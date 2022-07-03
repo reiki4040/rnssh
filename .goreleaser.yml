@@ -35,9 +35,10 @@ release:
 # homebrew
 brews:
   - description: "Easy ssh to EC2"
-    github:
+    tap:
       owner: reiki4040
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/reiki4040/rnssh"
     install: |
       bin.install "rnssh"
