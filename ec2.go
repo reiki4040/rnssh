@@ -2,13 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sort"
 	"text/tabwriter"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	"github.com/reiki4040/cstore"
 	"github.com/reiki4040/peco"
@@ -74,7 +75,7 @@ func (e ChoosableEC2s) Less(i, j int) bool {
 }
 
 type Instances struct {
-	Instances []*ec2.Instance `json:"ec2_instances"`
+	Instances []*types.Instance `json:"ec2_instances"`
 }
 
 func NewEC2Handler(m *cstore.Manager) *EC2Handler {
@@ -93,7 +94,7 @@ func (r *EC2Handler) GetCacheStore(region string) (*cstore.CStore, error) {
 }
 
 func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool) ([]peco.Choosable, error) {
-	var instances []*ec2.Instance
+	var instances []*types.Instance
 	cacheStore, _ := r.GetCacheStore(region)
 
 	is := Instances{}
@@ -124,29 +125,34 @@ func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool)
 	return choices, nil
 }
 
-func GetInstances(region string) ([]*ec2.Instance, error) {
-	cli := ec2.New(session.New(), &aws.Config{Region: aws.String(region)})
+func GetInstances(region string) ([]*types.Instance, error) {
+	ctx := context.TODO()
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return nil, err
+	}
+	cli := ec2.NewFromConfig(cfg)
 
-	resp, err := cli.DescribeInstances(nil)
+	resp, err := cli.DescribeInstances(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(resp.Reservations) == 0 {
-		return []*ec2.Instance{}, nil
+		return []*types.Instance{}, nil
 	}
 
-	instances := make([]*ec2.Instance, 0)
+	instances := make([]*types.Instance, 0)
 	for _, r := range resp.Reservations {
 		for _, i := range r.Instances {
-			instances = append(instances, i)
+			instances = append(instances, &i)
 		}
 	}
 
 	return instances, nil
 }
 
-func ConvertChoosableList(instances []*ec2.Instance, targetType string) []peco.Choosable {
+func ConvertChoosableList(instances []*types.Instance, targetType string) []peco.Choosable {
 	choosableEC2List := make([]*ChoosableEC2, 0, len(instances))
 	for _, i := range instances {
 		e := convertChoosable(i, targetType)
@@ -165,13 +171,8 @@ func ConvertChoosableList(instances []*ec2.Instance, targetType string) []peco.C
 	return choices
 }
 
-func convertChoosable(i *ec2.Instance, targetType string) *ChoosableEC2 {
-	if i.State.Name != nil {
-		s := i.State.Name
-		if *s != "running" {
-			return nil
-		}
-	} else {
+func convertChoosable(i *types.Instance, targetType string) *ChoosableEC2 {
+	if i.State.Name != types.InstanceStateNameRunning {
 		return nil
 	}
 
