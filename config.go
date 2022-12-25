@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/user"
@@ -254,15 +253,3 @@ var (
 		&peco.Choice{C: "Yes, continue to AWS settings", V: "yes"},
 	}
 )
-
-func ask(msg, defaultValue string) (string, error) {
-	fmt.Printf("%s[%s]:", msg, defaultValue)
-	reader := bufio.NewReader(os.Stdin)
-
-	ans, err := reader.ReadString('\n')
-	if err != nil {
-		return "", fmt.Errorf("input err:%s", err.Error())
-	}
-
-	return ans, nil
-}
