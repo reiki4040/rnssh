@@ -62,8 +62,8 @@ func ParseSshConfig() ([]SshConfig, error) {
 	defer fp.Close()
 
 	s := bufio.NewScanner(fp)
-	hostRe := regexp.MustCompile("Host\\s+([^ #]+)")
-	hostnameRe := regexp.MustCompile("HostName\\s+([^ #]+)")
+	hostRe := regexp.MustCompile(`Host\s+([^ #]+)`)
+	hostnameRe := regexp.MustCompile(`HostName\s+([^ #]+)`)
 
 	inHost := false
 	configs := make([]SshConfig, 0)
