@@ -102,7 +102,7 @@ func (o *CommandOption) Validate() error {
 
 func duplicateHostTypeOption(public, private, name bool) error {
 	if public && private || private && name || public && name {
-		return fmt.Errorf("duplicate specify option -P/-p/-n. please spcify only one.")
+		return fmt.Errorf("duplicate specify option -P/-p/-n. please spcify only one")
 	}
 
 	return nil
@@ -313,7 +313,7 @@ func chooseAndGenSshArgs(rOpt *RnsshOption, cmdArgs []string, manager *cstore.Ma
 	// support user@host format
 	sshUser, hostname, err := getSshUserAndHostname(strings.Join(cmdArgs, " "))
 	if err != nil {
-		return nil, fmt.Errorf("%s\n", err.Error())
+		return nil, err
 	}
 
 	hostType := HOST_TYPE_PUBLIC_IP

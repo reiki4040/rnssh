@@ -118,7 +118,7 @@ func (r *EC2Handler) LoadTargetHost(hostType string, region string, reload bool)
 
 	choices := ConvertChoosableList(is.Instances, hostType)
 	if len(choices) == 0 {
-		err := fmt.Errorf("there is no running instance.")
+		err := fmt.Errorf("there is no running instance")
 		return nil, err
 	}
 
