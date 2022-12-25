@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -48,7 +49,7 @@ func ParseSshConfig() ([]SshConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can not resolved home dir: %s", err.Error())
 	}
-	path := user.HomeDir + string(os.PathSeparator) + ".ssh" + string(os.PathSeparator) + "config"
+	path := filepath.Join(user.HomeDir, ".ssh", "config")
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, fmt.Errorf("not exists: %s", path)
