@@ -29,7 +29,7 @@ func LoadSshConfigChoosableList() ([]peco.Choosable, error) {
 		w.Flush()
 
 		choice := &peco.Choice{
-			C: string(b.Bytes()),
+			C: b.String(),
 			V: c.Host,
 		}
 

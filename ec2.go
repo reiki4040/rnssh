@@ -39,11 +39,11 @@ func (e *ChoosableEC2) Choice() string {
 	if e.TargetType == HOST_TYPE_NAME_TAG {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s", e.InstanceId, e.Name, publicIP, e.PrivateIP)
 		w.Flush()
-		return string(b.Bytes())
+		return b.String()
 	} else {
 		fmt.Fprintf(w, "%s\t%s\t%s", e.InstanceId, e.Name, e.Value())
 		w.Flush()
-		return string(b.Bytes())
+		return b.String()
 	}
 }
 
