@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -28,7 +29,7 @@ func LoadSshConfigChoosableList() ([]peco.Choosable, error) {
 		w.Flush()
 
 		choice := &peco.Choice{
-			C: string(b.Bytes()),
+			C: b.String(),
 			V: c.Host,
 		}
 
@@ -48,7 +49,7 @@ func ParseSshConfig() ([]SshConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can not resolved home dir: %s", err.Error())
 	}
-	path := user.HomeDir + string(os.PathSeparator) + ".ssh" + string(os.PathSeparator) + "config"
+	path := filepath.Join(user.HomeDir, ".ssh", "config")
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil, fmt.Errorf("not exists: %s", path)
@@ -61,8 +62,8 @@ func ParseSshConfig() ([]SshConfig, error) {
 	defer fp.Close()
 
 	s := bufio.NewScanner(fp)
-	hostRe := regexp.MustCompile("Host\\s+([^ #]+)")
-	hostnameRe := regexp.MustCompile("HostName\\s+([^ #]+)")
+	hostRe := regexp.MustCompile(`Host\s+([^ #]+)`)
+	hostnameRe := regexp.MustCompile(`HostName\s+([^ #]+)`)
 
 	inHost := false
 	configs := make([]SshConfig, 0)
