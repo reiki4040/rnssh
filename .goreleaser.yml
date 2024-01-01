@@ -18,14 +18,13 @@ builds:
       - darwin
     goarch:
       - amd64
+      - arm64
 archives:
-  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
-    replacements:
-      darwin: darwin
-      linux: linux
-      windows: windows
-      386: i386
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
@@ -35,10 +34,10 @@ release:
 # homebrew
 brews:
   - description: "Easy ssh to EC2"
-    tap:
+    repository:
       owner: reiki4040
       name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      token: "{{ .Env.GH_PAT }}"
     homepage: "https://github.com/reiki4040/rnssh"
     install: |
       bin.install "rnssh"
